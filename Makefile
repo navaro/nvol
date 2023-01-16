@@ -17,10 +17,10 @@ SRCS := \
 CFLAGS=-Os
 LDFLAGS=-lpthread --static -Xlinker -Map=output.map -T corshell.ld
 
-TARGET_EXEC ?= nvol2
+TARGET_EXEC ?= nvol
 
 BUILD_DIR ?= ./build
-SRC_DIRS ?= ./src
+SRC_DIRS ?= ./src ./test
 
 OBJS := $(SRCS:%=$(BUILD_DIR)/%.o) 
 DEPS := $(OBJS:.o=.d)

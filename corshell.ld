@@ -6,10 +6,10 @@ SECTIONS
   {
 		. = ALIGN((32));
 		
-        __rodata_cmds_base__ = .;
-         KEEP(*(.rodata.cmds.*))
+        __corshell_cmds_base__ = .;
+        KEEP(*(SORT(.corshell.cmds.*)))
         . = ALIGN(4);
-         __rodata_cmds_end__ = .;
+         __corshell_cmds_end__ = .;
 
   
   }

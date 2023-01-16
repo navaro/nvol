@@ -12,6 +12,8 @@
 #include <stdio.h>
 #include <dirent.h>
 #include <errno.h>
+#include <unistd.h>
+
 
 #include "shell/corshell.h"
 #include "registry/registry.h"

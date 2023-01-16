@@ -67,17 +67,17 @@ static CORSHELL_CMD_LIST_T _corshell_static_list = {
 };
 
 
-extern char __rodata_cmds_base__ ;
-extern char __rodata_cmds_end__ ;
+extern char __corshell_cmds_base__ ;
+extern char __corshell_cmds_end__ ;
 
 
 
 int32_t
 corshell_init (void)
 {
-    if (((uintptr_t)&__rodata_cmds_end__ - (uintptr_t)&__rodata_cmds_base__) / sizeof(CORSHELL_CMD_T)) {
-        _corshell_static_list.cmds = (CORSHELL_CMD_T *)&__rodata_cmds_base__;
-        _corshell_static_list.cnt = ((uintptr_t)&__rodata_cmds_end__ - (uintptr_t)&__rodata_cmds_base__) / sizeof(CORSHELL_CMD_T) ;
+    if (((uintptr_t)&__corshell_cmds_end__ - (uintptr_t)&__corshell_cmds_base__) / sizeof(CORSHELL_CMD_T)) {
+        _corshell_static_list.cmds = (CORSHELL_CMD_T *)&__corshell_cmds_base__;
+        _corshell_static_list.cnt = ((uintptr_t)&__corshell_cmds_end__ - (uintptr_t)&__corshell_cmds_base__) / sizeof(CORSHELL_CMD_T) ;
     }
 
     return CORSHELL_CMD_E_OK ;
@@ -184,7 +184,7 @@ int32_t corshell_print_table (void* ctx, uint32_t out, CORSHELL_OUT_FP shell_out
     va_list         args;
     va_start (args, fmtstr) ;
 
-    int count = snprintf ((char*)_corshell_buffer, CORSHELL_PRINT_BUFFER_SIZE - 3, (char*)left) ;
+    int count = snprintf ((char*)_corshell_buffer, CORSHELL_PRINT_BUFFER_SIZE - 3, "%s", (char*)left) ;
     do {
         _corshell_buffer[count++] = ' ' ;
     } while ((count < tabright) && (count < CORSHELL_PRINT_BUFFER_SIZE - 3)) ;

@@ -126,7 +126,7 @@ typedef struct CORSHELL_CMD_LIST_S {
     const CORSHELL_CMD_T    \
     __coralcmd_##function   ALIGN \
     __attribute__((used))  \
-     __attribute__((section(".rodata.cmds." #function))) =      \
+     __attribute__((section(".corshell.cmds." #function))) =      \
     { name,             \
     function,                       \
     usage                   \

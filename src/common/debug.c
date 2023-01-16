@@ -80,7 +80,7 @@ void
 dbg_put (const char *str)
 {
 
-    printf (str) ;
+    printf ("%s", str) ;
 
     return  ;
 }
