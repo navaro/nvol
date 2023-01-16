@@ -38,18 +38,18 @@ CORSHELL_CMD_DECL(  "date", corshell_date, "" );
 
 int32_t corshell_version (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc)
 {
-	printf ("corshell version %s - %s\r\n", __DATE__, __TIME__) ;
-	return CORSHELL_CMD_E_OK ;
+    printf ("corshell version %s - %s\r\n", __DATE__, __TIME__) ;
+    return CORSHELL_CMD_E_OK ;
 }
 
 int32_t corshell_date (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc)
 {
-	time_t t = time(NULL);
-	struct tm tm = *localtime(&t);
-	printf("%d-%02d-%02d %02d:%02d:%02d\r\n",
-	   tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
-	   tm.tm_hour, tm.tm_min, tm.tm_sec);
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+    printf("%d-%02d-%02d %02d:%02d:%02d\r\n",
+       tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+       tm.tm_hour, tm.tm_min, tm.tm_sec);
 
-	return CORSHELL_CMD_E_OK ;
+    return CORSHELL_CMD_E_OK ;
 }
 

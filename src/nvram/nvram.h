@@ -29,17 +29,17 @@
 
 
 
-int32_t		nvram_init (void) ;
-int32_t		nvram_start (void) ;
+int32_t     nvram_init (void) ;
+int32_t     nvram_start (void) ;
 
 #if CFG_PLATFORM_SPIFLASH
-#define nvram_read(address, len, data)			spiflash_read (address, len, data)
-#define nvram_write(address, len, data)        	spiflash_write (address, len, data)
-#define nvram_erase(start, end)        			spiflash_sector_erase (start, end)
+#define nvram_read(address, len, data)          spiflash_read (address, len, data)
+#define nvram_write(address, len, data)         spiflash_write (address, len, data)
+#define nvram_erase(start, end)                 spiflash_sector_erase (start, end)
 #else
-int32_t		nvram_read (uint32_t addr, uint32_t len, uint8_t * data) ;
-int32_t		nvram_write (uint32_t addr, uint32_t len, uint8_t * data) ;
-int32_t		nvram_erase (uint32_t addr_start, uint32_t addr_end) ;
+int32_t     nvram_read (uint32_t addr, uint32_t len, uint8_t * data) ;
+int32_t     nvram_write (uint32_t addr, uint32_t len, uint8_t * data) ;
+int32_t     nvram_erase (uint32_t addr_start, uint32_t addr_end) ;
 #endif
 
 

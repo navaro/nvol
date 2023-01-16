@@ -32,11 +32,11 @@
 #include "shell/corshell.h"
 #include "common/errordef.h"
 
-static int32_t 		corshell_reg (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc) ;
-static int32_t 		corshell_regadd (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc) ;
-static int32_t 		corshell_regdel (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc) ;
-static int32_t 		corshell_regstats (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc) ;
-static int32_t 		corshell_regerase (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc) ;
+static int32_t      corshell_reg (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc) ;
+static int32_t      corshell_regadd (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc) ;
+static int32_t      corshell_regdel (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc) ;
+static int32_t      corshell_regstats (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc) ;
+static int32_t      corshell_regerase (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc) ;
 
 
 CORSHELL_CMD_LIST_START(registry, 0)
@@ -50,126 +50,126 @@ CORSHELL_CMD_LIST_END()
 void
 reg_print (void* ctx, CORSHELL_OUT_FP shell_out, REGISTRY_KEY_T key, char* value, int length)
 {
-	char tmp[40] ;
-	snprintf(tmp, 40, "%s:", key) ;
-	corshell_print_table(ctx, CORSHELL_OUT_STD, shell_out,
-			tmp, 24, "%s" CORSHELL_NEWLINE, value) ;
+    char tmp[40] ;
+    snprintf(tmp, 40, "%s:", key) ;
+    corshell_print_table(ctx, CORSHELL_OUT_STD, shell_out,
+            tmp, 24, "%s" CORSHELL_NEWLINE, value) ;
 }
 
 static int32_t
 reg_show (void* ctx, CORSHELL_OUT_FP shell_out, const char * search, char * value, uint32_t len)
 {
-	int32_t found = EFAIL ;
-	REGISTRY_KEY_T key ;
-	int32_t res = registry_first (&key, value, len) ;
-	while (res >= 0) {
+    int32_t found = EFAIL ;
+    REGISTRY_KEY_T key ;
+    int32_t res = registry_first (&key, value, len) ;
+    while (res >= 0) {
 
-		if (!search || strstr(key, search)) {
+        if (!search || strstr(key, search)) {
 
-			reg_print (ctx, shell_out, key, value, len) ;
+            reg_print (ctx, shell_out, key, value, len) ;
 
-			found = EOK ;
-		}
-		res = registry_next (&key, value, len) ;
+            found = EOK ;
+        }
+        res = registry_next (&key, value, len) ;
 
-	}
+    }
 
-	return found ;
+    return found ;
 }
 
 static int32_t
 corshell_reg (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc)
 {
 
-	char value[REGISTRY_VALUE_LENGT_MAX] ;
-	int32_t res = CORSHELL_CMD_E_OK ;
+    char value[REGISTRY_VALUE_LENGT_MAX] ;
+    int32_t res = CORSHELL_CMD_E_OK ;
 
-	if (argc == 1) {
-		res = reg_show (ctx, shell_out, 0, value, REGISTRY_VALUE_LENGT_MAX) ;
+    if (argc == 1) {
+        res = reg_show (ctx, shell_out, 0, value, REGISTRY_VALUE_LENGT_MAX) ;
 
-	}
-	else if (argc == 2) {
+    }
+    else if (argc == 2) {
 
-		res = registry_value_get (argv[1], value, REGISTRY_VALUE_LENGT_MAX) ;
-		if (res > 0) {
-			reg_print (ctx, shell_out, argv[1], value, REGISTRY_VALUE_LENGT_MAX) ;
+        res = registry_value_get (argv[1], value, REGISTRY_VALUE_LENGT_MAX) ;
+        if (res > 0) {
+            reg_print (ctx, shell_out, argv[1], value, REGISTRY_VALUE_LENGT_MAX) ;
 
-		} else {
-			res = reg_show (ctx, shell_out, argv[1], value, REGISTRY_VALUE_LENGT_MAX) ;
+        } else {
+            res = reg_show (ctx, shell_out, argv[1], value, REGISTRY_VALUE_LENGT_MAX) ;
 
-		}
+        }
 
-	}
-	else if (argc == 3) {
+    }
+    else if (argc == 3) {
 
-		res = registry_value_set (argv[1], argv[2], strlen(argv[2])+ 1) ;
+        res = registry_value_set (argv[1], argv[2], strlen(argv[2])+ 1) ;
 
-		corshell_print(ctx, CORSHELL_OUT_STD, shell_out,
-			"%s" CORSHELL_NEWLINE, res == EOK ? "OK" : "ERR") ;
+        corshell_print(ctx, CORSHELL_OUT_STD, shell_out,
+            "%s" CORSHELL_NEWLINE, res == EOK ? "OK" : "ERR") ;
 
-	}
+    }
 
 
-	return res ;
+    return res ;
 }
 
 static int32_t
 corshell_regadd (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc)
 {
-	char value[REGISTRY_VALUE_LENGT_MAX] ;
-	int32_t res = CORSHELL_CMD_E_OK ;
+    char value[REGISTRY_VALUE_LENGT_MAX] ;
+    int32_t res = CORSHELL_CMD_E_OK ;
 
-	if (argc < 3) {
-		return CORSHELL_CMD_E_PARMS ;
+    if (argc < 3) {
+        return CORSHELL_CMD_E_PARMS ;
 
-	}
+    }
 
-	res = registry_value_get (argv[1], value, REGISTRY_VALUE_LENGT_MAX) ;
-	if (res >= 0 ) {
-		corshell_print(ctx, CORSHELL_OUT_STD, shell_out,
-			"registry setting %s exists" CORSHELL_NEWLINE, argv[1]) ;
+    res = registry_value_get (argv[1], value, REGISTRY_VALUE_LENGT_MAX) ;
+    if (res >= 0 ) {
+        corshell_print(ctx, CORSHELL_OUT_STD, shell_out,
+            "registry setting %s exists" CORSHELL_NEWLINE, argv[1]) ;
 
-		return CORSHELL_CMD_E_EXIST ;
-	}
+        return CORSHELL_CMD_E_EXIST ;
+    }
 
 
-	res = registry_value_set (argv[1], argv[2],  strlen (argv[2]) + 1) ;
+    res = registry_value_set (argv[1], argv[2],  strlen (argv[2]) + 1) ;
 
-	corshell_print(ctx, CORSHELL_OUT_STD, shell_out,
-		"%s" CORSHELL_NEWLINE, res == EOK ? "OK" : "ERR") ;
+    corshell_print(ctx, CORSHELL_OUT_STD, shell_out,
+        "%s" CORSHELL_NEWLINE, res == EOK ? "OK" : "ERR") ;
 
-	return res ;
+    return res ;
 }
 
 static int32_t
 corshell_regdel (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc)
 {
-	int32_t res ;
+    int32_t res ;
 
-	if (argc != 2) {
-		return CORSHELL_CMD_E_PARMS ;
+    if (argc != 2) {
+        return CORSHELL_CMD_E_PARMS ;
 
-	}
+    }
 
-	res = registry_value_delete (argv[1]) ;
-	corshell_print(ctx, CORSHELL_OUT_STD, shell_out, "%s\r\n", res == EOK ? "OK" : "ERR") ;
+    res = registry_value_delete (argv[1]) ;
+    corshell_print(ctx, CORSHELL_OUT_STD, shell_out, "%s\r\n", res == EOK ? "OK" : "ERR") ;
 
-	return CORSHELL_CMD_E_OK ;
+    return CORSHELL_CMD_E_OK ;
 }
 
 static int32_t
 corshell_regstats (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc)
 {
-	registry_log_status () ;
-	return CORSHELL_CMD_E_OK ;
+    registry_log_status () ;
+    return CORSHELL_CMD_E_OK ;
 }
 
 
 static int32_t
 corshell_regerase (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc)
 {
-	registry_erase () ;
-	return CORSHELL_CMD_E_OK ;
+    registry_erase () ;
+    return CORSHELL_CMD_E_OK ;
 }
 
 #endif /* CFG_REGISTRY_USE */

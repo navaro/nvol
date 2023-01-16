@@ -30,66 +30,66 @@
 
 
 #if !CFG_PLATFORM_SPIFLASH
-#define NVRAM_SIZE 		(		\
-		STORAGE_NVOL3_REGISTRY_SECTOR_SIZE*STORAGE_NVOL3_REGISTRY_SECTOR_COUNT \
-		)
-static uint8_t			_nvram_test[NVRAM_SIZE] PLATFORM_SECTION_NOINIT ;
+#define NVRAM_SIZE      (       \
+        STORAGE_NVOL3_REGISTRY_SECTOR_SIZE*STORAGE_NVOL3_REGISTRY_SECTOR_COUNT \
+        )
+static uint8_t          _nvram_test[NVRAM_SIZE] PLATFORM_SECTION_NOINIT ;
 #endif
 
 int32_t
 nvram_init (void)
 {
 
-	return EOK;
+    return EOK;
 }
 
 int32_t
 nvram_start (void)
 {
 
-	return EOK ;
+    return EOK ;
 }
 
 #if !CFG_PLATFORM_SPIFLASH
 int32_t
 nvram_erase (uint32_t addr_start, uint32_t addr_end)
 {
-	if (addr_end < addr_start) return E_PARM ;
-	if (addr_start >= NVRAM_SIZE) return E_PARM ;
-	if (addr_end >= NVRAM_SIZE) {
-		addr_end = NVRAM_SIZE - 1 ;
-	}
-	memset ((void*)(_nvram_test + addr_start), 0xFF, addr_end - addr_start) ;
+    if (addr_end < addr_start) return E_PARM ;
+    if (addr_start >= NVRAM_SIZE) return E_PARM ;
+    if (addr_end >= NVRAM_SIZE) {
+        addr_end = NVRAM_SIZE - 1 ;
+    }
+    memset ((void*)(_nvram_test + addr_start), 0xFF, addr_end - addr_start) ;
 
-	return EOK ;
+    return EOK ;
 }
 
 int32_t
 nvram_write (uint32_t addr, uint32_t len, uint8_t * data)
 {
-	uint32_t i ;
-	if (addr >= NVRAM_SIZE) return E_PARM ;
-	if (addr + len >= NVRAM_SIZE) return E_PARM ;
+    uint32_t i ;
+    if (addr >= NVRAM_SIZE) return E_PARM ;
+    if (addr + len >= NVRAM_SIZE) return E_PARM ;
 
-	for (i=0; i<len; i++) {
-		_nvram_test[i+addr] &= data[i] ;
-	}
+    for (i=0; i<len; i++) {
+        _nvram_test[i+addr] &= data[i] ;
+    }
 
 
-	// memcpy ((void*)(_nvram_test + addr), data, len) ;
+    // memcpy ((void*)(_nvram_test + addr), data, len) ;
 
-	return EOK ;
+    return EOK ;
 }
 
 int32_t
 nvram_read (uint32_t addr, uint32_t len, uint8_t * data)
 {
-	if (addr >= NVRAM_SIZE) return E_PARM ;
-	if (addr + len >= NVRAM_SIZE) return E_PARM ;
+    if (addr >= NVRAM_SIZE) return E_PARM ;
+    if (addr + len >= NVRAM_SIZE) return E_PARM ;
 
-	memcpy (data, (void*)(_nvram_test + addr), len) ;
+    memcpy (data, (void*)(_nvram_test + addr), len) ;
 
-	return EOK ;
+    return EOK ;
 }
 #endif
 

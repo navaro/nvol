@@ -27,30 +27,30 @@
 #include <stdint.h>
 #include <assert.h>
 
-#define DEBUG_MSG_SIZE 			128
-#define DEBUG_SERIAL_DRIVER		&SD3
+#define DEBUG_MSG_SIZE          128
+#define DEBUG_SERIAL_DRIVER     &SD3
 
 
 static char debug_msg[DEBUG_MSG_SIZE] ;
 
 int
-dbg_vprintf (const char *format_str, va_list	args)
+dbg_vprintf (const char *format_str, va_list    args)
 {
-	int32_t count = vsnprintf ((char*)debug_msg, DEBUG_MSG_SIZE, (char*)format_str, args) ;
+    int32_t count = vsnprintf ((char*)debug_msg, DEBUG_MSG_SIZE, (char*)format_str, args) ;
 
-	debug_msg [DEBUG_MSG_SIZE-1] = '\0';
-	printf ("%s\r\n", (uint8_t*)debug_msg) ;
+    debug_msg [DEBUG_MSG_SIZE-1] = '\0';
+    printf ("%s\r\n", (uint8_t*)debug_msg) ;
 
     return count ;
 
 }
 
 /**
- * @brief   	debug_printf
- * @details		prints a formatted string to the debug output.
+ * @brief       debug_printf
+ * @details     prints a formatted string to the debug output.
  * @note
  *
- * @param[in] format	format string to print to debug output
+ * @param[in] format    format string to print to debug output
  *
  * @return              number of characters printed
  *
@@ -59,7 +59,7 @@ dbg_vprintf (const char *format_str, va_list	args)
 int
 dbg_printf (const char *format, ...)
 {
-	va_list			args;
+    va_list         args;
 
     va_start (args, format) ;
 
@@ -67,11 +67,11 @@ dbg_printf (const char *format, ...)
 }
 
 /**
- * @brief   	debug_put
- * @details		prints a string to the debug output.
+ * @brief       debug_put
+ * @details     prints a string to the debug output.
  * @note
  *
- * @param[in] str	 string to print to debug output
+ * @param[in] str    string to print to debug output
  *
  *
  * @debug
@@ -80,7 +80,7 @@ void
 dbg_put (const char *str)
 {
 
-	printf (str) ;
+    printf (str) ;
 
     return  ;
 }
@@ -88,7 +88,7 @@ dbg_put (const char *str)
 void
 dbg_assert (const char *format, ...)
 {
-	va_list			args;
+    va_list         args;
 
     va_start (args, format) ;
 
