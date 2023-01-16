@@ -1,0 +1,10 @@
+source regtest.sh
+source regtest.sh
+source regtest.sh
+source regtest.sh
+source regtest.sh
+source regtest.sh
+source regtest.sh
+source regtest.sh
+source regtest.sh
+source regtest.sh
