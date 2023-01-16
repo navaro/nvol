@@ -42,7 +42,7 @@ static int32_t      corshell_regerase (void* ctx, CORSHELL_OUT_FP shell_out, cha
 CORSHELL_CMD_LIST_START(registry, 0)
 CORSHELL_CMD_LIST("reg", corshell_reg, "[key] [value]")
 CORSHELL_CMD_LIST("regadd", corshell_regadd, "<key> <value>")
-CORSHELL_CMD_LIST("regdel", corshell_regdel, "<key> <value>")
+CORSHELL_CMD_LIST("regdel", corshell_regdel, "<key>")
 CORSHELL_CMD_LIST("regstats", corshell_regstats, "")
 CORSHELL_CMD_LIST("regerase", corshell_regerase, "")
 CORSHELL_CMD_LIST_END()
