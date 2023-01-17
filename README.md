@@ -21,7 +21,7 @@ block size may be 4K or 8K bytes. For NVOL, the FLASH implementations should sup
 
 For the FLASH, the page is considered the smallest block size that can be erased. Each sector can be made up of one or more of these pages.
 
-The first sector is initially erased. New registry entries are added sequentially to the FLASH. When an entry is updated, the previous entry is marked as invalid and a new entry is written at the next available FLASH address. Once the first sector reaches capacity, all valid entries are copied to the second sector and the first sector is then erased. This process repeats itself.
+The first sector is initially erased. New registry entries are added sequentially to the FLASH. When an entry is updated, the old entry is marked as invalid and a new entry is written at the next available FLASH address. Once the first sector reaches capacity, all valid entries are copied to the second sector and the first sector is then erased. This process repeats itself.
 
 NVOL efficiently handles and keeps track of valid entries and their locations on FLASH. The sectors are managed dynamically
 
