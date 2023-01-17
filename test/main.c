@@ -251,7 +251,7 @@ corshell_source (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc)
          */
         res = corshell_script_run (0, corshell_out, "", buffer, res) ;
 
-        free (buffer) ;
+        c
 
     }
 
@@ -281,6 +281,8 @@ corshell_cat (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc)
 
         shell_out (ctx, CORSHELL_OUT_STD, buffer) ;
         shell_out (ctx, CORSHELL_OUT_STD, "\r\n") ;
+        free (buffer) ;
+        res = CORSHELL_CMD_E_OK ;
 
     }
 
