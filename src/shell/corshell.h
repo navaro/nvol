@@ -65,6 +65,7 @@
 #define CORSHELL_CMD_E_BREAK            (-9)
 #define CORSHELL_CMD_E_CANCEL           (-10)
 #define CORSHELL_CMD_E_EXIST            (-11)
+#define CORSHELL_CMD_E_EOF            	(-12)
 
 #define CORSHELL_ARGC_MAX               14
 #define CORSHELL_PRINT_BUFFER_SIZE      384

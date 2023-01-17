@@ -33,17 +33,18 @@
 #endif
 
 
-NVOL3_INSTANCE_DECL(_regdef_nvol3_entry, \
-        STORAGE_NVOL3_REGISTRY_START, \
-        STORAGE_NVOL3_REGISTRY_START + STORAGE_NVOL3_REGISTRY_SECTOR_SIZE, \
-        STORAGE_NVOL3_REGISTRY_SECTOR_SIZE, \
-        REGISTRY_KEY_LENGTH /*key_size*/, \
-        DICTIONARY_KEYSPEC_BINARY(6) /*dictionary key_type (24 char string)*/, \
-        53 /*hashsize*/, \
-        REGISTRY_VALUE_LENGT_MAX /*data_size*/, \
-        0 /*local_size (no cache in RAM)*/, \
-        0 /*tallie*/, \
-        NVOL3_SECTOR_VERSION /*version*/) ;
+NVOL3_INSTANCE_DECL(_regdef_nvol3_entry,
+        NVOL3_REGISTRY_START,
+        NVOL3_REGISTRY_START + NVOL3_REGISTRY_SECTOR_SIZE,
+        NVOL3_REGISTRY_SECTOR_SIZE,
+        REGISTRY_KEY_LENGTH, 			/*key_size*/
+        DICTIONARY_KEYSPEC_BINARY(6), 	/*dictionary key_type (24 char string)*/
+        53,								/*hashsize*/
+        REGISTRY_VALUE_LENGT_MAX, 		/*data_size*/
+        0, 								/*local_size (no cache in RAM)*/
+        0, 								/*tallie*/
+		NVOL3_SECTOR_VERSION 			/*version*/
+		) ;
 
 
 
