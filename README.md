@@ -70,9 +70,12 @@ use 'help' or '?' for help.
 # >
 ```
 
-First we will run a simple script to populate our registry with values.At the prompt type ```source ./test/reg.sh```. This should fill the registry with values.
+First, we will run a simple script to populate our registry with values.At the prompt type 
+```
+source ./test/reg.sh
+```
 
-To list all the commands for testing the registry type ``` ? reg```, it should display the following list:
+This should fill the registry with values. To list all the commands for testing the registry type ``` ? reg```, it should display the following list:
 
 ```
 # >? reg
