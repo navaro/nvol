@@ -31,7 +31,7 @@ static STRSUB_INSTANCE_T  _strsub_instance = {STRSUB_ESCAPE_TOKEN,
 
 bool
 strsub_install_handler (STRSUB_INSTANCE_T * instance, strsub_token_t token,
-        STRSUB_HANDLER_T* handler, STRSUB_LOOKUP_CB cb)
+        				STRSUB_HANDLER_T* handler, STRSUB_LOOKUP_CB cb)
 {
     if (instance == 0) instance = &_strsub_instance ;
     if ((token >= 0) &&
@@ -47,6 +47,31 @@ strsub_install_handler (STRSUB_INSTANCE_T * instance, strsub_token_t token,
     return false ;
 }
 
+void
+strsub_uninstall_handler (STRSUB_INSTANCE_T * instance, strsub_token_t token,
+							STRSUB_HANDLER_T* handler)
+{
+	if (instance == 0) instance = &_strsub_instance ;
+
+	STRSUB_HANDLER_T * l =  instance->handlers[token] ;
+	STRSUB_HANDLER_T * prev = 0 ;
+
+    for (  ; (l!=0) && (l!=handler) ; ) {
+
+        prev = l ;
+        l = l->next;
+
+    }
+
+    if ((l == handler) && prev) {
+            prev->next = l->next ;
+
+    } else if (l == handler) {
+    	instance->handlers[token] = l->next ;
+    }
+
+    return  ;
+}
 
 uint32_t
 strsub_parse (STRSUB_INSTANCE_T * instance, STRSUB_REPLACE_CB cb,

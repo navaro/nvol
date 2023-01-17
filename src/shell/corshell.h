@@ -121,6 +121,10 @@ typedef struct CORSHELL_CMD_LIST_S {
         extern CORSHELL_CMD_LIST_T  _corshell_##name##_list ; \
         corshell_install (&_corshell_##name##_list) ;
 
+#define CORSHELL_CMD_LIST_UNINSTALL(name) \
+        extern CORSHELL_CMD_LIST_T  _corshell_##name##_list ; \
+        corshell_uninstall (&_corshell_##name##_list) ;
+
 #if 1
 #define CORSHELL_CMD_DECL(name, function, usage)        \
     const CORSHELL_CMD_T    \

@@ -105,7 +105,8 @@ extern "C" {
      * Replacement handlers can be installed for an instance of the string substitution
      * module. If 'instance' is NULL the default instance is used.
      */
-    extern bool         strsub_install_handler (STRSUB_INSTANCE_T * instance, strsub_token_t token, STRSUB_HANDLER_T* handler, STRSUB_LOOKUP_CB cb) ;
+	extern bool         strsub_install_handler (STRSUB_INSTANCE_T * instance, strsub_token_t token, STRSUB_HANDLER_T* handler, STRSUB_LOOKUP_CB cb) ;
+	extern void         strsub_uninstall_handler (STRSUB_INSTANCE_T * instance, strsub_token_t token, STRSUB_HANDLER_T* handler) ;
 
     /**
      * A source string can be parsed to a user allocated destination string using

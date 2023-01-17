@@ -51,8 +51,8 @@
 #define NVOL3_PAGE_SIZE                         0x20            // one page used at the start of the sector.
 #define NVOL3_HEADROOM                          0x04            // min available slots before volume is full
 #define NVOL3_HEAP_SPACE                        HEAP_SPACE      // heap handle to allocate memory for nvol3.
-#define NVOL3_MALLOC(heap, size)                heap_malloc (heap, size)
-#define NVOL3_FREE(heap, mem)                   heap_free (heap, mem)
+#define NVOL3_MALLOC(size)                		heap_malloc (HEAP_SPACE, size)
+#define NVOL3_FREE(mem)                   		heap_free (HEAP_SPACE, mem)
 
 /*
  * ToDo: transactions
@@ -114,6 +114,9 @@ struct NVOL3_INSTANCE_S ;
 typedef int32_t (*NVLOL3_CALLBACK_T)(struct NVOL3_INSTANCE_S * /*inst*/, struct NVOL3_RECORD_S * /*record*/, uint32_t /*ctx*/) ;
 typedef int32_t (*NVLOL3_TRANSACTION_CALLBACK_T)(struct NVOL3_INSTANCE_S * /*inst*/, int32_t /*cmd*/) ;
 
+/*
+ * ToDo: implement transactions
+ */
 #define NVOL3_TRANSACTION_CMD_GET               -1
 #define NVOL3_TRANSACTION_CMD_SET_STOP          0
 #define NVOL3_TRANSACTION_CMD_SET_START         1
@@ -125,9 +128,9 @@ typedef int32_t (*NVLOL3_TRANSACTION_CALLBACK_T)(struct NVOL3_INSTANCE_S * /*ins
  */
 typedef struct NVOL3_CONFIG_S {
     const char*         name ;
-    uint32_t            sector1_addr ;
-    uint32_t            sector2_addr ;
-    uint32_t            sector_size ;
+    uint32_t            sector1_addr ;			/**< @brief  start address of sector. address to be used by the driver */
+    uint32_t            sector2_addr ;			/**< @brief  start address of sector. address to be used by the driver */
+    uint32_t            sector_size ;			/**< @brief  size of sector 1 and to. this must be a multiple of the supported FLASH page sizes */
     uint16_t            record_size ;           /**< @brief  max record size including header, key and value */
     uint16_t            local_size ;            /**< @brief  size of value to cache in ram (only cached if length is <= than this size) */
     uint16_t            key_size ;              /**< @brief  key size used for indexing in dictionary. */
@@ -165,7 +168,9 @@ typedef struct NVOL3_ITERATOR_S {
     struct dictionary_it    it ;
 } NVOL3_ITERATOR_T ;
 
-
+/**
+ * @brief   macros to declare instances of nvol. "name" to be used as NVOL3_INSTANCE_T instance parameter to the API
+ */
 #define NVOL3_INSTANCE_DECL(name, sector1, sector2, sector_size, key_size, keyspec, hashsize, data_size, local_size, tallie, version)  \
         const NVOL3_CONFIG_T name ## _config = { #name, \
                         sector1, \
@@ -200,12 +205,18 @@ typedef struct NVOL3_ITERATOR_S {
 extern "C" {
 #endif
 
+	/*
+	 * Initialisation functions.
+	 */
     int32_t         nvol3_load (NVOL3_INSTANCE_T* instance) ;
     int32_t         nvol3_validate (NVOL3_INSTANCE_T* instance) ;
     int32_t         nvol3_reset (NVOL3_INSTANCE_T* instance) ;
     int32_t         nvol3_delete (NVOL3_INSTANCE_T* instance) ;
     void            nvol3_unload (NVOL3_INSTANCE_T* instance) ;
 
+    /*
+     * API for writing to FLASH immediately.
+     */
     int32_t         nvol3_record_set (NVOL3_INSTANCE_T* instance, NVOL3_RECORD_T *value, uint32_t key_and_data_length) ;
     int32_t         nvol3_record_get (NVOL3_INSTANCE_T* instance, NVOL3_RECORD_T *value) ;
     int32_t         nvol3_record_delete (NVOL3_INSTANCE_T* instance, NVOL3_RECORD_T *record) ;
@@ -214,6 +225,9 @@ extern "C" {
     int32_t         nvol3_record_first (NVOL3_INSTANCE_T* instance, NVOL3_RECORD_T *value, NVOL3_ITERATOR_T * it) ;
     int32_t         nvol3_record_next (NVOL3_INSTANCE_T* instance, NVOL3_RECORD_T *value, NVOL3_ITERATOR_T * it) ;
 
+    /*
+     * API to access records from RAM and persist only on demand. locel_size should be same as data_size!
+     */
     int32_t         nvol3_entry_first (NVOL3_INSTANCE_T* instance, NVOL3_ITERATOR_T * it) ;
     int32_t         nvol3_entry_next (NVOL3_INSTANCE_T* instance, NVOL3_ITERATOR_T * it) ;
     int32_t         nvol3_entry_at (NVOL3_INSTANCE_T* instance, const char * key, NVOL3_ITERATOR_T * it) ;
@@ -222,9 +236,19 @@ extern "C" {
     int32_t         nvol3_entry_save (NVOL3_INSTANCE_T* instance, NVOL3_ITERATOR_T * it) ;
     int32_t         nvol3_entry_delete (NVOL3_INSTANCE_T* instance, NVOL3_ITERATOR_T * it) ;
 
+    /*
+     * print the status of the nvol to the debug output.
+     */
     void            nvol3_entry_log_status (NVOL3_INSTANCE_T* instance, uint32_t verbose) ;
+
+    /*
+     * can be implemented to keep count of reads and writes to the nvol
+     */
     int32_t         nvol3_callback_tallie (struct NVOL3_INSTANCE_S * inst, struct NVOL3_RECORD_S * record, uint32_t ctx) ;
 
+    /*
+     * ToDo: transactions
+     */
     int32_t         nvol3_transaction_start (void) ;
     int32_t         nvol3_transaction_rollback (void) ;
     int32_t         nvol3_transaction_commit (void) ;

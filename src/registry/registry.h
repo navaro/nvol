@@ -56,6 +56,7 @@ extern "C" {
 
     int32_t     registry_init (void) ;
     int32_t     registry_start (void) ;
+    int32_t     registry_stop (void) ;
     int32_t     registry_erase (void) ;
 
     bool        registry_value_valid (REGISTRY_KEY_T id) ;
