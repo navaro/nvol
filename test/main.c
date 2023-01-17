@@ -25,18 +25,9 @@ static int32_t      corshell_out(void* ctx, uint32_t out, const char* str) ;
 static int32_t      get_line (char * buffer, uint32_t len) ;
 
 /*
- * Declare commands for use with the shell and use the CORSHELL_CMD_DECL for the
+ * Declare commands for use with the shell. Use the CORSHELL_CMD_DECL for the
  * commands to be accessible from the command shell interface.
  */
-static int32_t      corshell_ls(void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc) ;
-static int32_t      corshell_cd(void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc) ;
-static int32_t      corshell_source(void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc) ;
-static int32_t      corshell_source2(void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc) ;
-static int32_t      corshell_cat(void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc) ;
-static int32_t      corshell_pwd(void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc) ;
-static int32_t      corshell_echo(void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc) ;
-static int32_t      corshell_exit(void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc) ;
-
 CORSHELL_CMD_DECL("ls", corshell_ls, "");
 CORSHELL_CMD_DECL("cd", corshell_cd, "<path>");
 CORSHELL_CMD_DECL("source", corshell_source, "<file>");
@@ -192,9 +183,9 @@ corshell_pwd (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc)
 
 static int32_t
 read_file (void* ctx, CORSHELL_OUT_FP shell_out, const char * filename,
-			char ** pbuffer)
+            char ** pbuffer)
 {
-	*pbuffer = NULL ;
+    *pbuffer = NULL ;
 
     /*
      * Read the script specified on the command line.
@@ -212,11 +203,11 @@ read_file (void* ctx, CORSHELL_OUT_FP shell_out, const char * filename,
     fseek(fp, 0L, SEEK_SET);
 
     if (!sz) {
-    	fclose(fp);
-    	return CORSHELL_CMD_E_EOF ;
+        fclose(fp);
+        return CORSHELL_CMD_E_EOF ;
     }
 
-    char * buffer = malloc (sz) ;
+    char * buffer = malloc (sz + 1 ) ;
     if (!buffer) {
         corshell_print(ctx, CORSHELL_OUT_ERR, shell_out,
                 "out of memory.\r\n");
@@ -235,6 +226,7 @@ read_file (void* ctx, CORSHELL_OUT_FP shell_out, const char * filename,
     }
     fclose(fp);
 
+    buffer[num] = '\0' ;
     *pbuffer = buffer ;
 
     return sz ;
@@ -243,7 +235,7 @@ read_file (void* ctx, CORSHELL_OUT_FP shell_out, const char * filename,
 static int32_t
 corshell_source (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc)
 {
-	int32_t res  ;
+    int32_t res  ;
 
     if (argc < 2) {
         return CORSHELL_CMD_E_PARMS ;
@@ -254,12 +246,12 @@ corshell_source (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc)
     res = read_file(ctx, shell_out, argv[1], &buffer) ;
     if (res > 0) {
 
-		/*
-		 * Run the script read from the file.
-		 */
-		res = corshell_script_run (0, corshell_out, "", buffer, res) ;
+        /*
+         * Run the script read from the file.
+         */
+        res = corshell_script_run (0, corshell_out, "", buffer, res) ;
 
-		free (buffer) ;
+        free (buffer) ;
 
     }
 
@@ -276,7 +268,7 @@ corshell_source2 (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc)
 static int32_t
 corshell_cat (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc)
 {
-	int32_t res  ;
+    int32_t res  ;
 
     if (argc < 2) {
         return CORSHELL_CMD_E_PARMS ;
@@ -285,9 +277,10 @@ corshell_cat (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc)
     char * buffer ;
 
     res = read_file(ctx, shell_out, argv[1], &buffer) ;
-    if (res == CORSHELL_CMD_E_OK) {
+    if (res > 0) {
 
-    	shell_out (ctx, CORSHELL_OUT_STD, buffer) ;
+        shell_out (ctx, CORSHELL_OUT_STD, buffer) ;
+        shell_out (ctx, CORSHELL_OUT_STD, "\r\n") ;
 
     }
 

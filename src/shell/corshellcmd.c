@@ -29,9 +29,6 @@
 #include <ctype.h>
 #include "corshell.h"
 
-static int32_t corshell_version (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc) ;
-static int32_t corshell_date (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc) ;
-
 CORSHELL_CMD_DECL(  "version", corshell_version, "" );
 CORSHELL_CMD_DECL(  "date", corshell_date, "" );
 

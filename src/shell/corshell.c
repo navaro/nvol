@@ -38,12 +38,6 @@
 
 int32_t _corshell_status = 0 ;
 
-static int32_t corshell_help (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc) ;
-static int32_t corshell_help2 (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc) ;
-static int32_t corshell_rem (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc) ;
-static int32_t corshell_nop (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc) ;
-
-
 CORSHELL_CMD_DECL( "help", corshell_help, "[filter]");
 CORSHELL_CMD_DECL( "?", corshell_help2, 0);
 CORSHELL_CMD_DECL( "rem", corshell_rem, 0);

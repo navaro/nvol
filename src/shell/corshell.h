@@ -65,7 +65,7 @@
 #define CORSHELL_CMD_E_BREAK            (-9)
 #define CORSHELL_CMD_E_CANCEL           (-10)
 #define CORSHELL_CMD_E_EXIST            (-11)
-#define CORSHELL_CMD_E_EOF            	(-12)
+#define CORSHELL_CMD_E_EOF              (-12)
 
 #define CORSHELL_ARGC_MAX               14
 #define CORSHELL_PRINT_BUFFER_SIZE      384
@@ -128,6 +128,7 @@ typedef struct CORSHELL_CMD_LIST_S {
 
 #if 1
 #define CORSHELL_CMD_DECL(name, function, usage)        \
+    static int32_t  function (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc) ; \
     const CORSHELL_CMD_T    \
     __coralcmd_##function   ALIGN \
     __attribute__((used))  \
