@@ -50,6 +50,7 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+README.md.backup
 .settings/
 build/
 build/nvol
