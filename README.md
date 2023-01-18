@@ -3,7 +3,7 @@
 NVOL is a persistent FLASH registry, often referred to as EEPROM emulation. It offers a basic API for reading and writing indexed key/value pairs to and from a FLASH memory, similar to a registry. Some of the features of NVOL include:
 
 
-- Internal data management and wear leveling using 2 dedicated sectors.
+- Internal data management and wear leveling using 2 sectors.
 - Configurable sector sizes.
 - Reliability with robustness against power failures and asynchronous resets.
 - Ensure data integrity with automatic recovery of corrupt sectors or entries during startup.
