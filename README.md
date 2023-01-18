@@ -146,7 +146,7 @@ record  : 256 recordsize
 
 These commands are all implemented in ```src/registry/registrycmd.c```. The implementation is intuitive and self-explanatory and should requiring no further explanation.
 
-The shell is a project in its own right but it is included in this example for demonstration purposes. It is easy to extend. Use ```?``` to see the complete list of implemented commands for this example.
+The shell is a project in and of itself, but is only included in this example for demonstration purposes. It is easy to extend. Use ```?``` to see the complete list of commands implemented for this example.
 
 # Porting
 
