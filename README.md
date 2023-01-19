@@ -57,7 +57,7 @@ Now *_regdef_nvol3_entry* can be used with the NVOL API. The NVOL API is slightl
 
 # NVOL String Registry Example
 
-The test example provided can be compiled and run in a GitHub codespace. Simply open a codespace for this repostory and type ```make``` in the terminal that opens. Now you can start the NVOL example by typing ```./build/nvol``` in the terminal. All the commands can be executed in the terminal of the codespace.
+The test example provided can be compiled and run in a GitHub codespace. Simply open a codespace for this repostory and type ```make``` in the terminal that opens (if the terminal is not open use ``` ctrl + ` ``` to open the terminal). Now you can start the NVOL example by typing ```./build/nvol``` in the terminal. All the commands can be executed in the terminal of the codespace.
 
 When the example program is launched, a command shell will open and it will display the following:
 ```
