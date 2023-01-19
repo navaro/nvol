@@ -26,6 +26,7 @@
 #ifndef __DICTIONARY_H__
 #define __DICTIONARY_H__
 
+#include <stdint.h>
 #include <common/heap.h>
 
 struct dictionary ;

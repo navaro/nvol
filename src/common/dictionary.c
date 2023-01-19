@@ -154,7 +154,7 @@ dictionary_uint_keyval_alloc(struct dictionary * dict, const char *s, unsigned i
 
     np = (struct dlist *) DICTIONARY_MALLOC(dict->heap,
             sizeof(struct dlist) +
-            sizeof(uintptr_t) +
+			sizeof(unsigned int) +
             valuesize);
     if (!np) return 0 ;
     np->keyval[0] =  *((unsigned int*)s)  ;

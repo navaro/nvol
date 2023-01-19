@@ -51,8 +51,8 @@
 #define NVOL3_PAGE_SIZE                         0x20            // one page used at the start of the sector.
 #define NVOL3_HEADROOM                          0x04            // min available slots before volume is full
 #define NVOL3_HEAP_SPACE                        HEAP_SPACE      // heap handle to allocate memory for nvol3.
-#define NVOL3_MALLOC(size)                		heap_malloc (HEAP_SPACE, size)
-#define NVOL3_FREE(mem)                   		heap_free (HEAP_SPACE, mem)
+#define NVOL3_MALLOC(size)                      heap_malloc (HEAP_SPACE, size)
+#define NVOL3_FREE(mem)                         heap_free (HEAP_SPACE, mem)
 
 /*
  * ToDo: transactions
@@ -128,9 +128,9 @@ typedef int32_t (*NVLOL3_TRANSACTION_CALLBACK_T)(struct NVOL3_INSTANCE_S * /*ins
  */
 typedef struct NVOL3_CONFIG_S {
     const char*         name ;
-    uint32_t            sector1_addr ;			/**< @brief  start address of sector. address to be used by the driver */
-    uint32_t            sector2_addr ;			/**< @brief  start address of sector. address to be used by the driver */
-    uint32_t            sector_size ;			/**< @brief  size of sector 1 and to. this must be a multiple of the supported FLASH page sizes */
+    uint32_t            sector1_addr ;          /**< @brief  start address of sector. address to be used by the driver */
+    uint32_t            sector2_addr ;          /**< @brief  start address of sector. address to be used by the driver */
+    uint32_t            sector_size ;           /**< @brief  size of sector 1 and to. this must be a multiple of the supported FLASH page sizes */
     uint16_t            record_size ;           /**< @brief  max record size including header, key and value */
     uint16_t            local_size ;            /**< @brief  size of value to cache in ram (only cached if length is <= than this size) */
     uint16_t            key_size ;              /**< @brief  key size used for indexing in dictionary. */
@@ -205,9 +205,9 @@ typedef struct NVOL3_ITERATOR_S {
 extern "C" {
 #endif
 
-	/*
-	 * Initialisation functions.
-	 */
+    /*
+     * Initialisation functions.
+     */
     int32_t         nvol3_load (NVOL3_INSTANCE_T* instance) ;
     int32_t         nvol3_validate (NVOL3_INSTANCE_T* instance) ;
     int32_t         nvol3_reset (NVOL3_INSTANCE_T* instance) ;
