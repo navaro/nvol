@@ -14,7 +14,7 @@ NVOL is a persistent FLASH registry, often referred to as EEPROM emulation. It o
 - Efficient and lightweight implementaiton.
 - Support transactions.
 
-The library provides two options for data storage: Option 1: To always store entries permanently on FLASH memory when chnaaged. Option 2: To store entries in RAM and save them to FLASH memory on demand.
+The library provides two options for data storage: Option 1: To always store entries permanently to FLASH memory when changed. Option 2: To store entries in RAM and save them to FLASH memory on demand.
 
 ## Background
 The disadvantage of a FLASH memory is that it cannot be erased or written in single bytes. FLASH memory can only be erased and written in large blocks. A typical erase
