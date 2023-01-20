@@ -31,13 +31,14 @@ NVOL efficiently handles and keeps track of valid entries and their locations on
 Macros are available to create static instances of NVOL, which can then be used with the API. An example of a declaration would be:
 ```
 #define NVOL3_REGISTRY_START                0
-#define NVOL3_REGISTRY_SECTOR_SIZE          STORAGE_64K
+#define NVOL3_REGISTRY_SECTOR_SIZE          STORAGE_32K
 #define NVOL3_REGISTRY_SECTOR_COUNT         2
 
 #define REGISTRY_KEY_LENGTH                 24
 #define REGISTRY_VALUE_LENGT_MAX            224
 
 NVOL3_INSTANCE_DECL(_regdef_nvol3_entry,
+        ramdrv_read, ramdrv_write, ramdrv_erase,
         NVOL3_REGISTRY_START,
         NVOL3_REGISTRY_START + NVOL3_REGISTRY_SECTOR_SIZE,
         NVOL3_REGISTRY_SECTOR_SIZE,
@@ -45,14 +46,17 @@ NVOL3_INSTANCE_DECL(_regdef_nvol3_entry,
         DICTIONARY_KEYSPEC_BINARY(6),   /*dictionary key_type (24 char string)*/
         53,                             /*hashsize*/
         REGISTRY_VALUE_LENGT_MAX,       /*data_size*/
-        0,                              /*local_size (value cache in RAM)*/
+        0,                              /*local_size (no cache in RAM)*/
         0,                              /*tallie*/
         NVOL3_SECTOR_VERSION            /*version*/
         ) ;
+
 ```
 
 
-This creates a NVOL with two 64K sectors at the start of the FLASH. The total size of the key, including the entry header, is 256 bytes. This is not a requirement, but alignment should be taken into account. The lookup dictionary has a hash size of 53. Furthermore, this instance will not store any values in RAM (```local_size = 0```) so will always read them from FLASH when needed.
+This creates a NVOL with two 32K sectors at the start of the FLASH. The total size of the key, including the entry header, is 256 bytes. This is not a requirement, but alignment should be taken into account. The lookup dictionary has a hash size of 53. Furthermore, this instance will not store any values in RAM (```local_size = 0```) so will always read them from FLASH when needed.
+
+In the demo the nvramdrv driver is used that emulation a FLASH memory in RAM, the access functions is ramdrv_read, ramdrv_write and ramdrv_erase configured for this instance.
 
 Now *_regdef_nvol3_entry* can be used with the NVOL API. The NVOL API is slightly invoved so a simple registry example is provided.
 
@@ -85,6 +89,7 @@ regadd <key> <value>
 regdel <key>
 regerase 
 regstats 
+regtest [repeat]
 # >
 ```
 
@@ -157,13 +162,6 @@ The shell is a project in and of itself, but is only included in this example fo
 
 # Porting
 
-The example provides an emulation of the FLASH in RAM. To port the implementation to use a real FLASH chip the following exported functions need to be implemented for your platform:
+The example provides an emulation of the FLASH in RAM implemented in "crc/drivers/ramdrv.h/c". 
 
-```
-int32_t spiflash_read (uint32_t address, uint32_t len, uint8_t* data) ;
-int32_t spiflash_write (uint32_t address, uint32_t len, const uint8_t* data) ;
-int32_t spiflash_sector_erase (uint32_t addr_start, uint32_t addr_end) ;
-```
-
-
-For the demo these functions were implemented in ```src/nvram/nvram.c``` making use of RAM.
+In the same directory a sample driver for a real FLASH chip is proviced in the files spiflash.h/c. This was implemeted using the ChibiOS/HAL SPI driver. THis wuld be a good starting point for porting NVOL to your own platform.
