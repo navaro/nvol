@@ -127,21 +127,27 @@ OK
 user.favorite_color:    yellow
 ```
 
-4. Look at the status of the registry:
+4. Delete an entry:
+```
+# >regdel user.gender
+OK
+```
+
+5. Look at the status of the registry:
 ```
 # >regstats
-NVOL3 : : '_regdef_nvol3_entry' 21 / 255 records loaded
+NVOL3 : : '_regdef_nvol3_entry' 20 / 255 records loaded
 record  : 256 recordsize
         : 0x000000 1st sector version 0x0155 flags 0xaaaaffff
         : 0x010000 2nd sector version 0x0000 flags 0xffffffff
         : 0x010000 sector size
-        : 21 loaded
-        : 21 inuse
-        : 1 invalid
+        : 20 loaded
+        : 20 inuse
+        : 2 invalid
         : 0 error
-        : 672 lookup table bytes
-        : 101 dict hash size (21)
-        : dict hash - max 2, empty 82, used 19
+        : 640 lookup table bytes
+        : 53 dict hash size
+        : dict hash - max 2, empty 34, used 19
 ```
 
 These commands are all implemented in ```src/registry/registrycmd.c```. The implementation is intuitive and self-explanatory and should requiring no further explanation.
