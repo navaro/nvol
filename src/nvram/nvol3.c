@@ -26,12 +26,10 @@
 #include <common/debug.h>
 #include <common/errordef.h>
 #include "nvol3.h"
-#include "nvram.h"
 
-#define FLASH_READ(address, len, data)          nvram_read (address, len, data)
-#define FLASH_WRITE(address, len, data)         nvram_write (address, len, data)
-#define FLASH_ERASE(start, end)                 nvram_erase (start, end)
-
+#define FLASH_READ(flash, address, len, data)   flash.read (address, len, data)
+#define FLASH_WRITE(flash, address, len, data)  flash.write (address, len, data)
+#define FLASH_ERASE(flash, start, end)          flash.erase (start, end)
 
 #pragma pack(1)
 typedef struct NVOL3_SECTOR_RECORD_S {
@@ -59,14 +57,15 @@ max_records (NVOL3_INSTANCE_T * instance)
 
 
 static uint16_t
-get_sector_version (uint32_t sector_addr, uint32_t * flags)
+get_sector_version (const NVOL3_CONFIG_T * config, uint32_t sector_addr,
+                    uint32_t * flags)
 {
     NVOL3_SECTOR_RECORD_T sector ;
 
     if (flags) *flags = 0 ;
 
     /* read sector record */
-    if (FLASH_READ (sector_addr, sizeof (NVOL3_SECTOR_RECORD_T),
+    if (FLASH_READ (config->flash, sector_addr, sizeof (NVOL3_SECTOR_RECORD_T),
                 (uint8_t*)&sector) != EOK) {
         return NVOL3_SECTOR_VERSION_0 ;
     }
@@ -77,8 +76,8 @@ get_sector_version (uint32_t sector_addr, uint32_t * flags)
 }
 
 static int32_t
-set_sector_flags (uint32_t sector_addr, uint32_t flags,
-                    const NVOL3_CONFIG_T * config)
+set_sector_flags (const NVOL3_CONFIG_T * config, uint32_t sector_addr,
+                    uint32_t flags)
 {
     NVOL3_SECTOR_RECORD_T sector ;
 
@@ -87,11 +86,12 @@ set_sector_flags (uint32_t sector_addr, uint32_t flags,
     sector.flags = flags;
     sector.version =  ~((uint32_t)config->version)  ;
 
-    int32_t res = FLASH_WRITE((uint32_t)sector_addr,
+    int32_t res = FLASH_WRITE(config->flash, (uint32_t)sector_addr,
                         sizeof(NVOL3_SECTOR_RECORD_T), (uint8_t*)&sector)  ;
 
     uint32_t sector_flags;
-    uint16_t sector_version = get_sector_version (sector_addr, &sector_flags) ;
+    uint16_t sector_version = get_sector_version (config, sector_addr,
+                                &sector_flags) ;
 
     if (
           (sector_version != config->version) ||
@@ -107,9 +107,10 @@ set_sector_flags (uint32_t sector_addr, uint32_t flags,
 }
 
 static int32_t
-erase_sector (uint32_t sector_addr, uint32_t sector_size)
+erase_sector (const NVOL3_CONFIG_T * config, uint32_t sector_addr,
+                uint32_t sector_size)
 {
-    return FLASH_ERASE (sector_addr, sector_addr + sector_size) ;
+    return FLASH_ERASE (config->flash, sector_addr, sector_addr + sector_size) ;
 }
 
 static int32_t
@@ -124,7 +125,7 @@ read_variable_record_head (NVOL3_INSTANCE_T * instance,
             "read_variable_record_head idx %d", idx) ;
 
     offset = NVOL3_PAGE_SIZE + config->record_size * idx ;
-    status = FLASH_READ (instance->sector + offset,
+    status = FLASH_READ (config->flash, instance->sector + offset,
                     sizeof (NVOL3_RECORD_HEAD_T), (uint8_t*)head) ;
     if (status != EOK) {
           DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_ERROR,
@@ -157,7 +158,7 @@ read_variable_record (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T *rec,
             "read_variable_record idx %d", idx) ;
 
     offset = NVOL3_PAGE_SIZE + config->record_size * idx ;
-    status = FLASH_READ (instance->sector + offset,
+    status = FLASH_READ (config->flash, instance->sector + offset,
                     sizeof (NVOL3_RECORD_HEAD_T), (uint8_t*)rec) ;
     if (status != EOK) {
           DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_ERROR,
@@ -179,7 +180,7 @@ read_variable_record (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T *rec,
         offset += sizeof (NVOL3_RECORD_HEAD_T) ;
         if (bytes == 0) bytes = rec->head.length ;
         else if (bytes > rec->head.length) bytes = rec->head.length ;
-        status = FLASH_READ (instance->sector + offset, bytes,
+        status = FLASH_READ (config->flash, instance->sector + offset, bytes,
                         (uint8_t*)rec->key_and_data) ;
     }
 
@@ -204,8 +205,8 @@ write_variable_record (NVOL3_INSTANCE_T * instance,  uint32_t sector_addr,
     }
 
     offset = NVOL3_PAGE_SIZE + config->record_size * idx  ;
-    status = FLASH_WRITE (sector_addr + offset, rec->head.length +
-                    sizeof(NVOL3_RECORD_HEAD_T), (uint8_t*)rec) ;
+    status = FLASH_WRITE (config->flash, sector_addr + offset,
+                rec->head.length + sizeof(NVOL3_RECORD_HEAD_T), (uint8_t*)rec) ;
 
     DBG_ASSERT_T (status == EOK, "nvol_write_variable_record failed!!!") ;
 
@@ -225,8 +226,8 @@ set_variable_record_flags (NVOL3_INSTANCE_T * instance, uint32_t sector_addr,
             idx, max_records(instance)) ;
 
     offset = NVOL3_PAGE_SIZE + config->record_size * idx  ;
-    status = FLASH_WRITE (sector_addr + offset, (uint32_t)sizeof(uint16_t),
-                    (uint8_t*)&flags) ;
+    status = FLASH_WRITE (config->flash, sector_addr + offset,
+                    (uint32_t)sizeof(uint16_t), (uint8_t*)&flags) ;
     DBG_ASSERT_T (status == EOK, "set_variable_record_flags failed!!!") ;
 
     return status ;
@@ -349,7 +350,7 @@ construct_lookup_table ( NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch)
 
 
     instance->next_idx = idx ;
-    instance->version = get_sector_version (instance->sector, 0) ;
+    instance->version = get_sector_version (config, instance->sector, 0) ;
     if (instance->version != config->version) {
         return E_VERSION ;
     }
@@ -372,20 +373,21 @@ move_sector ( NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch,
           "NVOL3 : : '%s' move sectors dst 0x%x src 0x%x",
           config->name, dst_addr, instance->sector) ;
 
-   get_sector_version (dst_addr, &sector_flags) ;
+   get_sector_version (config, dst_addr, &sector_flags) ;
 
   if (sector_flags != NVOL3_SECTOR_EMPTY)
   {
     // erase it
      DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_WARNING,
              "NVOL3 :W: '%s' move sectors dst not empty!", config->name) ;
-     if ((status = erase_sector(dst_addr, config->sector_size)) != EOK) {
+     if ((status = erase_sector(config, dst_addr, config->sector_size))
+                     != EOK) {
          return status ;
      }
   }
 
   // mark destination sector as being initialized
-  if ((status = set_sector_flags(dst_addr, NVOL3_SECTOR_INITIALIZING, config))
+  if ((status = set_sector_flags(config, dst_addr, NVOL3_SECTOR_INITIALIZING))
           != EOK) {
       DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_ERROR,
               "NVOL3 :E: '%s' move error initializing dst sector!",
@@ -440,7 +442,7 @@ move_sector ( NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch,
         idx++ ;
   }
 
-  if ((status = set_sector_flags( dst_addr, NVOL3_SECTOR_VALID, config))
+  if ((status = set_sector_flags(config, dst_addr, NVOL3_SECTOR_VALID))
           != EOK) {
       DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_ERROR,
               "NVOL3 :E: '%s' swap error initialising dst sector!",
@@ -499,20 +501,21 @@ swap_sectors (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch)
           "NVOL3 : : '%s' swap sectors dst 0x%x src 0x%x",
           config->name, dst_addr, src_addr) ;
 
-   get_sector_version (dst_addr, &sector_flags) ;
+   get_sector_version (config, dst_addr, &sector_flags) ;
 
   if (sector_flags != NVOL3_SECTOR_EMPTY)
   {
     // erase it
      DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_WARNING,
              "NVOL3 :W: '%s' swap sectors dst not empty!", config->name) ;
-     if ((status = erase_sector(dst_addr, config->sector_size)) != EOK) {
+     if ((status = erase_sector(config, dst_addr, config->sector_size))
+                             != EOK) {
          return status ;
      }
   }
 
   // mark destination sector as being initialized
-  if ((status = set_sector_flags(dst_addr, NVOL3_SECTOR_INITIALIZING, config))
+  if ((status = set_sector_flags(config, dst_addr, NVOL3_SECTOR_INITIALIZING))
           != EOK) {
       DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_ERROR,
               "NVOL3 :E: '%s' swap error initialising dst sector!",
@@ -548,7 +551,7 @@ swap_sectors (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch)
 
 
 
-  if ((status = set_sector_flags( dst_addr, NVOL3_SECTOR_VALID, config))
+  if ((status = set_sector_flags(config, dst_addr, NVOL3_SECTOR_VALID))
           != EOK) {
       DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_ERROR,
               "NVOL3 :E: '%s' swap error initialising dst sector!",
@@ -562,7 +565,7 @@ swap_sectors (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch)
   // regenerate lookup table
   construct_lookup_table(instance, scratch);
 
-  if ((status = set_sector_flags(src_addr, NVOL3_SECTOR_INVALID, config))
+  if ((status = set_sector_flags(config, src_addr, NVOL3_SECTOR_INVALID))
           != EOK) {
       DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_ERROR,
               "NVOL3 :E: '%s' swap error reinitialising src sector!",
@@ -571,7 +574,7 @@ swap_sectors (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch)
   }
 
   // erase source sector
-  if ((status = erase_sector(src_addr, config->sector_size)) != EOK) {
+  if ((status = erase_sector(config, src_addr, config->sector_size)) != EOK) {
      return status ;
   }
   DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_LOG,
@@ -586,8 +589,8 @@ init_sectors (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch)
   uint32_t sector1_flags, sector2_flags;
   const NVOL3_CONFIG_T  *   config = instance->config ;
 
-  get_sector_version (config->sector1_addr, &sector1_flags) ;
-  get_sector_version (config->sector2_addr, &sector2_flags) ;
+  get_sector_version (config, config->sector1_addr, &sector1_flags) ;
+  get_sector_version (config, config->sector2_addr, &sector2_flags) ;
 
   // if sector 1 has invalid flags then erase it
   if ((sector1_flags != NVOL3_SECTOR_EMPTY)        &&
@@ -595,7 +598,7 @@ init_sectors (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch)
       (sector1_flags != NVOL3_SECTOR_VALID)        &&
       (sector1_flags != NVOL3_SECTOR_INVALID))
   {
-        erase_sector(config->sector1_addr, config->sector_size) ;
+        erase_sector(config, config->sector1_addr, config->sector_size) ;
         sector1_flags = NVOL3_SECTOR_EMPTY;
   }
 
@@ -605,7 +608,7 @@ init_sectors (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch)
       (sector2_flags != NVOL3_SECTOR_VALID)        &&
       (sector2_flags != NVOL3_SECTOR_INVALID))
   {
-        erase_sector(config->sector2_addr, config->sector_size);
+        erase_sector(config, config->sector2_addr, config->sector_size);
         sector2_flags = NVOL3_SECTOR_EMPTY;
   }
     instance->next_idx = 0 ;
@@ -618,12 +621,12 @@ init_sectors (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch)
 
         // sector 1 empty, sector 2 empty
         case NVOL3_SECTOR_EMPTY:
-            erase_sector(config->sector1_addr, config->sector_size) ;
+            erase_sector(config, config->sector1_addr, config->sector_size) ;
 
           // use sector 1
             instance->sector = config->sector1_addr ;
-            if (set_sector_flags(instance->sector, NVOL3_SECTOR_VALID,
-                    config) != EOK) {
+            if (set_sector_flags(config, instance->sector, NVOL3_SECTOR_VALID)
+                                != EOK) {
                 return EFAIL ;
             }
             break ;
@@ -633,8 +636,8 @@ init_sectors (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch)
         case NVOL3_SECTOR_INITIALIZING:
           // use sector 2
             instance->sector = config->sector2_addr ;
-            if (set_sector_flags(instance->sector, NVOL3_SECTOR_VALID,
-                    config) != EOK) {
+            if (set_sector_flags(config, instance->sector, NVOL3_SECTOR_VALID)
+                                != EOK) {
                 return EFAIL ;
             }
             break ;
@@ -663,11 +666,11 @@ init_sectors (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch)
         // sector 1 initializing, sector 2 empty
         case NVOL3_SECTOR_EMPTY:
           // use sector 1
-            erase_sector(config->sector2_addr, config->sector_size) ;
+            erase_sector(config, config->sector2_addr, config->sector_size) ;
 
             instance->sector = config->sector1_addr ;
-            if (set_sector_flags(instance->sector, NVOL3_SECTOR_VALID,
-                    config) != EOK) {
+            if (set_sector_flags(config,instance->sector, NVOL3_SECTOR_VALID)
+                                != EOK) {
                 return EFAIL ;
             }
             break ;
@@ -676,11 +679,11 @@ init_sectors (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch)
         case NVOL3_SECTOR_INITIALIZING:
           // erase sector 2
 
-            erase_sector(config->sector2_addr, config->sector_size) ;
+            erase_sector(config, config->sector2_addr, config->sector_size) ;
 
             instance->sector = config->sector1_addr ;
-            if (set_sector_flags(instance->sector, NVOL3_SECTOR_VALID,
-                    config) != EOK) {
+            if (set_sector_flags(config, instance->sector, NVOL3_SECTOR_VALID)
+                                != EOK) {
                 return EFAIL ;
             }
             break ;
@@ -688,7 +691,7 @@ init_sectors (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch)
         // sector 1 initializing, sector 2 valid
         case NVOL3_SECTOR_VALID:
           // erase sector 1
-            erase_sector(config->sector1_addr, config->sector_size) ;
+            erase_sector(config, config->sector1_addr, config->sector_size) ;
 
               // swap sectors 2 -> 1
             instance->sector = config->sector2_addr ;
@@ -702,12 +705,12 @@ init_sectors (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch)
         // sector 1 initializing, sector 2 invalid
         case NVOL3_SECTOR_INVALID:
           // erase sector 2
-            erase_sector(config->sector2_addr, config->sector_size) ;
+            erase_sector(config, config->sector2_addr, config->sector_size) ;
 
             // use sector 1
             instance->sector = config->sector1_addr ;
-            if (set_sector_flags(instance->sector, NVOL3_SECTOR_VALID,
-                    config) != EOK) {
+            if (set_sector_flags(config, instance->sector, NVOL3_SECTOR_VALID)
+                                != EOK) {
                 return EFAIL ;
             }
             break ;
@@ -726,7 +729,7 @@ init_sectors (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch)
 
         // sector 1 valid, sector 2 initialising
         case NVOL3_SECTOR_INITIALIZING:
-            erase_sector(config->sector2_addr, config->sector_size) ;
+            erase_sector(config, config->sector2_addr, config->sector_size) ;
 
 
               // swap sectors 2 -> 1
@@ -742,7 +745,7 @@ init_sectors (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch)
         case NVOL3_SECTOR_INVALID:
         case NVOL3_SECTOR_VALID:
           // erase sector 2 and use sector 1
-            erase_sector(config->sector2_addr, config->sector_size) ;
+            erase_sector(config, config->sector2_addr, config->sector_size) ;
 
             instance->sector = config->sector1_addr ;
             break ;
@@ -755,7 +758,7 @@ init_sectors (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch)
       {
         // sector 1 invalid, sector 2 empty
         case NVOL3_SECTOR_EMPTY:
-            erase_sector(config->sector2_addr, config->sector_size) ;
+            erase_sector(config, config->sector2_addr, config->sector_size) ;
 
           // swap sectors 1 -> 2
             instance->sector = config->sector1_addr ;
@@ -769,19 +772,19 @@ init_sectors (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch)
         // sector 1 invalid, sector 2 initialising
         case NVOL3_SECTOR_INITIALIZING:
               // erase sector 1
-            erase_sector(config->sector1_addr, config->sector_size) ;
+            erase_sector(config, config->sector1_addr, config->sector_size) ;
 
               // use sector 2
             instance->sector = config->sector2_addr ;
-            if (set_sector_flags(instance->sector, NVOL3_SECTOR_VALID,
-                    config) != EOK) {
+            if (set_sector_flags(config, instance->sector, NVOL3_SECTOR_VALID)
+                                != EOK) {
                 return EFAIL ;
             }
             break ;
 
         case NVOL3_SECTOR_VALID:
               // erase sector 1
-            erase_sector(config->sector1_addr, config->sector_size) ;
+            erase_sector(config, config->sector1_addr, config->sector_size) ;
 
               // use sector 2
             instance->sector = config->sector2_addr ;
@@ -791,7 +794,7 @@ init_sectors (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch)
         // sector 1 invalid, sector 2 invalid
         case NVOL3_SECTOR_INVALID:
           // both sectors invalid so try to recover sector 1
-            erase_sector(config->sector2_addr, config->sector_size) ;
+            erase_sector(config, config->sector2_addr, config->sector_size) ;
 
           // swap sectors 1 -> 2
             instance->sector = config->sector1_addr ;
@@ -884,9 +887,9 @@ nvol3_validate (NVOL3_INSTANCE_T* instance)
       uint32_t sector1_flags ;
       uint32_t sector2_flags ;
       uint16_t sector1_version =
-              get_sector_version (config->sector1_addr, &sector1_flags) ;
+              get_sector_version (config, config->sector1_addr, &sector1_flags) ;
       uint16_t sector2_version =
-              get_sector_version (config->sector2_addr, &sector2_flags) ;
+              get_sector_version (config, config->sector2_addr, &sector2_flags) ;
 
 
       if (  (sector1_flags == NVOL3_SECTOR_INITIALIZING) ||
@@ -927,13 +930,13 @@ nvol3_reset (NVOL3_INSTANCE_T* instance)
     if (instance->dict) dictionary_destroy (instance->dict) ;
     instance->dict = 0 ;
 
-    erase_sector(config->sector1_addr, config->sector_size) ;
-    erase_sector(config->sector2_addr, config->sector_size) ;
+    erase_sector(config, config->sector1_addr, config->sector_size) ;
+    erase_sector(config, config->sector2_addr, config->sector_size) ;
 
     uint32_t sector1_flags, sector2_flags;
-    uint16_t sector1_version = get_sector_version (config->sector1_addr,
+    uint16_t sector1_version = get_sector_version (config, config->sector1_addr,
             &sector1_flags) ;
-    uint16_t sector2_version = get_sector_version (config->sector2_addr,
+    uint16_t sector2_version = get_sector_version (config, config->sector2_addr,
             &sector2_flags) ;
 
     if (
@@ -963,8 +966,8 @@ int32_t
 nvol3_delete (NVOL3_INSTANCE_T* instance)
 {
     const NVOL3_CONFIG_T    *   config = instance->config ;
-    erase_sector(config->sector1_addr, config->sector_size) ;
-    erase_sector(config->sector2_addr, config->sector_size) ;
+    erase_sector(config, config->sector1_addr, config->sector_size) ;
+    erase_sector(config, config->sector2_addr, config->sector_size) ;
 
     if (instance->dict) dictionary_destroy (instance->dict) ;
     instance->dict = 0 ;
@@ -1498,9 +1501,9 @@ nvol3_entry_log_status (NVOL3_INSTANCE_T* instance, uint32_t verbose)
     if (verbose) {
         uint32_t sector1_flags, sector2_flags;
         uint16_t sector1_version =
-                get_sector_version (config->sector1_addr, &sector1_flags) ;
+                get_sector_version (config, config->sector1_addr, &sector1_flags) ;
         uint16_t sector2_version =
-                get_sector_version (config->sector2_addr, &sector2_flags) ;
+                get_sector_version (config, config->sector2_addr, &sector2_flags) ;
 
         DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
                 "record  : %d recordsize", config->record_size) ;
@@ -1537,8 +1540,7 @@ nvol3_entry_log_status (NVOL3_INSTANCE_T* instance, uint32_t verbose)
         unsigned int empty = 0, max = 0, used = 0 ;
 
         DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
-                "        : %d dict hash size (%d)",
-                s, dictionary_count(instance->dict)) ;
+                "        : %d dict hash size", s) ;
 
         for (i=0; i< s; i++) {
             unsigned int cnt = dictionary_hashtab_cnt (instance->dict, i) ;
@@ -1552,6 +1554,7 @@ nvol3_entry_log_status (NVOL3_INSTANCE_T* instance, uint32_t verbose)
                 max, empty, used) ;
 
     }
+
 }
 
 

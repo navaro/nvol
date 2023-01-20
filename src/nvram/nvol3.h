@@ -111,8 +111,23 @@ typedef struct NVOL3_ENTRY_S
 #pragma pack()
 
 struct NVOL3_INSTANCE_S ;
+/*
+ * Callback interface
+ */
 typedef int32_t (*NVLOL3_CALLBACK_T)(struct NVOL3_INSTANCE_S * /*inst*/, struct NVOL3_RECORD_S * /*record*/, uint32_t /*ctx*/) ;
 typedef int32_t (*NVLOL3_TRANSACTION_CALLBACK_T)(struct NVOL3_INSTANCE_S * /*inst*/, int32_t /*cmd*/) ;
+/*
+ * FLASH access interface
+ */
+typedef int32_t (*NVLOL3_NVRAM_READ_T)(uint32_t /*addr*/, uint32_t /*len*/, uint8_t * /*data*/) ;
+typedef int32_t (*NVLOL3_NVRAM_WRITE_T)(uint32_t /*addr*/, uint32_t /*len*/, uint8_t * /*data*/) ;
+typedef int32_t (*NVLOL3_NVRAM_ERASE_T)(uint32_t /*addr_start*/, uint32_t /*addr_end*/) ;
+
+typedef struct NVOL3_FLASH_IF_S {
+    NVLOL3_NVRAM_READ_T     read ;
+    NVLOL3_NVRAM_WRITE_T    write ;
+    NVLOL3_NVRAM_ERASE_T    erase ;
+} NVOL3_FLASH_IF_T ;
 
 /*
  * ToDo: implement transactions
@@ -128,6 +143,7 @@ typedef int32_t (*NVLOL3_TRANSACTION_CALLBACK_T)(struct NVOL3_INSTANCE_S * /*ins
  */
 typedef struct NVOL3_CONFIG_S {
     const char*         name ;
+    NVOL3_FLASH_IF_T    flash ;                 /**< @brief  interface to read, write and erase functions in non volatile memory */
     uint32_t            sector1_addr ;          /**< @brief  start address of sector. address to be used by the driver */
     uint32_t            sector2_addr ;          /**< @brief  start address of sector. address to be used by the driver */
     uint32_t            sector_size ;           /**< @brief  size of sector 1 and to. this must be a multiple of the supported FLASH page sizes */
@@ -171,8 +187,9 @@ typedef struct NVOL3_ITERATOR_S {
 /**
  * @brief   macros to declare instances of nvol. "name" to be used as NVOL3_INSTANCE_T instance parameter to the API
  */
-#define NVOL3_INSTANCE_DECL(name, sector1, sector2, sector_size, key_size, keyspec, hashsize, data_size, local_size, tallie, version)  \
+#define NVOL3_INSTANCE_DECL(name, read, write, erase, sector1, sector2, sector_size, key_size, keyspec, hashsize, data_size, local_size, tallie, version)  \
         const NVOL3_CONFIG_T name ## _config = { #name, \
+                        {read, write, erase}, \
                         sector1, \
                         sector2, \
                         sector_size, \
@@ -189,12 +206,12 @@ typedef struct NVOL3_ITERATOR_S {
         NVOL3_INSTANCE_T name = { & name ## _config , 0, 0, 0, 0, 0, 0, 0 }
 
 
-#define NVOL3_UINT_INSTANCE_DECL(name, sector1, sector2, sector_size, data_size, local_size, hashsize, tallie, version)  \
-        NVOL3_INSTANCE_DECL(name, sector1, sector2, sector_size, sizeof(uint32_t), DICTIONARY_KEYSPEC_UINT, hashsize, data_size, \
+#define NVOL3_UINT_INSTANCE_DECL(name, read, write, erase, sector1, sector2, sector_size, data_size, local_size, hashsize, tallie, version)  \
+        NVOL3_INSTANCE_DECL(name, read, write, erase, sector1, sector2, sector_size, sizeof(uint32_t), DICTIONARY_KEYSPEC_UINT, hashsize, data_size, \
         local_size, tallie, version)
 
-#define NVOL3_USHORT_INSTANCE_DECL(name, sector1, sector2, sector_size, data_size, local_size, hashsize, tallie, version)  \
-        NVOL3_INSTANCE_DECL(name, sector1, sector2, sector_size, sizeof(uint16_t), DICTIONARY_KEYSPEC_USHORT, hashsize, data_size, \
+#define NVOL3_USHORT_INSTANCE_DECL(name, read, write, erase, sector1, sector2, sector_size, data_size, local_size, hashsize, tallie, version)  \
+        NVOL3_INSTANCE_DECL(name, read, write, erase, sector1, sector2, sector_size, sizeof(uint16_t), DICTIONARY_KEYSPEC_USHORT, hashsize, data_size, \
         local_size, tallie, version)
 
 /*===========================================================================*/

@@ -27,20 +27,30 @@
 #include <stdint.h>
 #include "system_config.h"
 
+/*
+ * Emulation of non volatile memory in RAM.
+ */
 
+/*===========================================================================*/
+/* External declarations.                                                    */
+/*===========================================================================*/
 
-int32_t     nvram_init (void) ;
-int32_t     nvram_start (void) ;
-
-#if CFG_PLATFORM_SPIFLASH
-#define nvram_read(address, len, data)          spiflash_read (address, len, data)
-#define nvram_write(address, len, data)         spiflash_write (address, len, data)
-#define nvram_erase(start, end)                 spiflash_sector_erase (start, end)
-#else
-int32_t     nvram_read (uint32_t addr, uint32_t len, uint8_t * data) ;
-int32_t     nvram_write (uint32_t addr, uint32_t len, uint8_t * data) ;
-int32_t     nvram_erase (uint32_t addr_start, uint32_t addr_end) ;
+#ifdef __cplusplus
+extern "C" {
 #endif
 
+	int32_t     nvram_init (void) ;
+	int32_t     nvram_start (void) ;
+	int32_t     nvram_stop (void) ;
+
+
+	int32_t     nvram_read (uint32_t addr, uint32_t len, uint8_t * data) ;
+	int32_t     nvram_write (uint32_t addr, uint32_t len, uint8_t * data) ;
+	int32_t     nvram_erase (uint32_t addr_start, uint32_t addr_end) ;
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __STORAGE_H__ */

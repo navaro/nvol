@@ -17,6 +17,7 @@
 
 #include "shell/corshell.h"
 #include "registry/registry.h"
+#include "drivers/nvram.h"
 
 #define SHELL_VERSION_STR       "Navaro corshell Demo v '" __DATE__ "'"
 #define SHELL_PROMPT            "# >"
@@ -45,6 +46,11 @@ static bool     _shell_exit = false ;
 int
 main(int argc, char* argv[])
 {
+    /*
+     * Initialise drivers.
+     */
+    nvram_init () ;
+    nvram_start () ;
     /*
      * Initialise the shell.
      */
@@ -84,6 +90,9 @@ main(int argc, char* argv[])
 
 
     } while (!_shell_exit) ;
+
+    registry_stop () ;
+    nvram_stop () ;
 
     return 0;
 }

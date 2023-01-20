@@ -50,6 +50,14 @@ nvram_start (void)
     return EOK ;
 }
 
+int32_t
+nvram_stop (void)
+{
+
+    return EOK ;
+}
+
+
 #if !CFG_PLATFORM_SPIFLASH
 int32_t
 nvram_erase (uint32_t addr_start, uint32_t addr_end)
