@@ -35,18 +35,18 @@
 
 
 NVOL3_INSTANCE_DECL(_regdef_nvol3_entry,
-		ramdrv_read, ramdrv_write, ramdrv_erase,
+        ramdrv_read, ramdrv_write, ramdrv_erase,
         NVOL3_REGISTRY_START,
         NVOL3_REGISTRY_START + NVOL3_REGISTRY_SECTOR_SIZE,
         NVOL3_REGISTRY_SECTOR_SIZE,
-        REGISTRY_KEY_LENGTH, 			/*key_size*/
-        DICTIONARY_KEYSPEC_BINARY(6), 	/*dictionary key_type (24 char string)*/
-        53,								/*hashsize*/
-        REGISTRY_VALUE_LENGT_MAX, 		/*data_size*/
-        0, 								/*local_size (no cache in RAM)*/
-        0, 								/*tallie*/
-		NVOL3_SECTOR_VERSION 			/*version*/
-		) ;
+        REGISTRY_KEY_LENGTH,            /*key_size*/
+        DICTIONARY_KEYSPEC_BINARY(6),   /*dictionary key_type (24 char string)*/
+        53,                             /*hashsize*/
+        REGISTRY_VALUE_LENGT_MAX,       /*data_size*/
+        0,                              /*local_size (no cache in RAM)*/
+        0,                              /*tallie*/
+        NVOL3_SECTOR_VERSION            /*version*/
+        ) ;
 
 
 
@@ -64,12 +64,11 @@ typedef struct NVOL3_REGISTRY_S {
 #define REGISTRY_KEY_TYPE_LEN       ((int32_t)(REGISTRY_KEY_LENGTH))
 
 NVOL3_REGISTRY_T _registry_value ;
-char _registry_key[REGISTRY_KEY_LENGTH+1] ;
 
 
 #if CFG_STRSUB_USE
 static int32_t registry_strsub_cb(STRSUB_REPLACE_CB cb, const char * str,
-								size_t len, uint32_t offset, uintptr_t arg) ;
+                                size_t len, uint32_t offset, uintptr_t arg) ;
 static STRSUB_HANDLER_T _registry_strsub ;
 #endif
 
@@ -86,13 +85,13 @@ _setkey (NVOL3_REGISTRY_T* entry, REGISTRY_KEY_T key)
 int32_t
 registry_init (void)
 {
-	REGISTRY_LOCK_INIT();
+    REGISTRY_LOCK_INIT();
     return EOK ;
 }
 
 /**
  * @brief       Start and load the registry lookup table.
- * @note		If it is not a valid registry the registry will be reset.
+ * @note        If it is not a valid registry the registry will be reset.
  * @return      status
  */
 int32_t
@@ -103,14 +102,14 @@ registry_start (void)
     REGISTRY_LOCK();
     if (nvol3_validate(&_regdef_nvol3_entry) != EOK) {
         DBG_MESSAGE_REGISTRY( DBG_MESSAGE_SEVERITY_REPORT,
-        		"REG   : : resetting _regdef_nvol3_entry")
+                "REG   : : resetting _regdef_nvol3_entry")
         status = nvol3_reset (&_regdef_nvol3_entry) ;
     } else {
         status = nvol3_load (&_regdef_nvol3_entry) ;
     }
 #if CFG_STRSUB_USE
     strsub_install_handler(0, StrsubToken1, &_registry_strsub,
-    		registry_strsub_cb) ;
+            registry_strsub_cb) ;
 #endif
     CORSHELL_CMD_LIST_INSTALL(registry) ;
     REGISTRY_UNLOCK();
@@ -167,7 +166,7 @@ registry_value_delete (REGISTRY_KEY_T id)
     REGISTRY_LOCK();
     _setkey (&_registry_value, id) ;
     res = nvol3_record_delete(&_regdef_nvol3_entry,
-    		(NVOL3_RECORD_T*)&_registry_value) ;
+            (NVOL3_RECORD_T*)&_registry_value) ;
     REGISTRY_UNLOCK();
 
     return res ;
@@ -234,7 +233,7 @@ registry_value_get (REGISTRY_KEY_T id, char* value, unsigned int length)
     _setkey (&_registry_value, id) ;
     memset(value, 0, length) ;
     if ((res = nvol3_record_get(&_regdef_nvol3_entry,
-    		(NVOL3_RECORD_T*)&_registry_value)) > REGISTRY_KEY_TYPE_LEN) {
+            (NVOL3_RECORD_T*)&_registry_value)) > REGISTRY_KEY_TYPE_LEN) {
         res -= REGISTRY_KEY_TYPE_LEN ;
         if (value && (length > 0)) {
             res = (int)length <= res ? (int)length : res ;
@@ -269,7 +268,7 @@ registry_value_set (REGISTRY_KEY_T id, const char* value, unsigned int length)
     memcpy(_registry_value.value, value, length) ;
 
     res =  nvol3_record_set (&_regdef_nvol3_entry,
-    		(NVOL3_RECORD_T*)&_registry_value, length + REGISTRY_KEY_TYPE_LEN) ;
+            (NVOL3_RECORD_T*)&_registry_value, length + REGISTRY_KEY_TYPE_LEN) ;
     REGISTRY_UNLOCK();
 
     return res ;
@@ -277,7 +276,8 @@ registry_value_set (REGISTRY_KEY_T id, const char* value, unsigned int length)
 }
 
 
-static NVOL3_ITERATOR_T _registry_it ;
+static NVOL3_ITERATOR_T     _registry_it ;
+static char                 _registry_key[REGISTRY_KEY_LENGTH+1] ;
 
 int32_t
 registry_first (REGISTRY_KEY_T* key, char* value, int length)
@@ -288,8 +288,8 @@ registry_first (REGISTRY_KEY_T* key, char* value, int length)
 
     REGISTRY_LOCK();
     if ((res = nvol3_record_first (&_regdef_nvol3_entry,
-    		(NVOL3_RECORD_T*)&_registry_value, &_registry_it)) >
-    		REGISTRY_KEY_TYPE_LEN) {
+            (NVOL3_RECORD_T*)&_registry_value, &_registry_it)) >
+            REGISTRY_KEY_TYPE_LEN) {
         res -= REGISTRY_KEY_TYPE_LEN ;
         if (res < length) {
             length = res ;
@@ -317,8 +317,8 @@ registry_next (REGISTRY_KEY_T* key, char* value, int length)
 
     REGISTRY_LOCK();
     if ((res = nvol3_record_next (&_regdef_nvol3_entry,
-    		(NVOL3_RECORD_T*)&_registry_value, &_registry_it)) >
-    		REGISTRY_KEY_TYPE_LEN) {
+            (NVOL3_RECORD_T*)&_registry_value, &_registry_it)) >
+            REGISTRY_KEY_TYPE_LEN) {
         res -= REGISTRY_KEY_TYPE_LEN ;
         if (res < length) {
             length = res ;
@@ -342,7 +342,7 @@ registry_next (REGISTRY_KEY_T* key, char* value, int length)
 void
 registry_log_status (void)
 {
-	REGISTRY_LOCK();
+    REGISTRY_LOCK();
     nvol3_entry_log_status (&_regdef_nvol3_entry, 1) ;
     REGISTRY_UNLOCK();
 }
@@ -352,7 +352,7 @@ registry_log_status (void)
 #if CFG_STRSUB_USE
 int32_t
 registry_strsub_cb (STRSUB_REPLACE_CB cb, const char * str, size_t len,
-					uint32_t offset, uintptr_t arg)
+                    uint32_t offset, uintptr_t arg)
 {
     int32_t res  ;
 
@@ -361,7 +361,7 @@ registry_strsub_cb (STRSUB_REPLACE_CB cb, const char * str, size_t len,
     strncpy (_registry_value.key, str, len) ;
 
     if ((res = nvol3_record_get(&_regdef_nvol3_entry,
-    		(NVOL3_RECORD_T*)&_registry_value)) > REGISTRY_KEY_TYPE_LEN) {
+            (NVOL3_RECORD_T*)&_registry_value)) > REGISTRY_KEY_TYPE_LEN) {
         res -= REGISTRY_KEY_TYPE_LEN ;
         res = cb (_registry_value.value, res, offset, arg) ;
 
