@@ -14,7 +14,7 @@ NVOL is a persistent FLASH registry, often referred to as EEPROM emulation. It o
 - Efficient and lightweight implementaiton.
 - Support transactions.
 
-The library provides two options for data storage: Option 1: To always store entries permanently to FLASH memory when changed. Option 2: To store entries in RAM and save them to FLASH memory on demand.
+The library provides two options to manage data storage: Option 1: Immediately save entries to FLASH memory whenever changed. Option 2: Store entries in RAM and save to FLASH memory on demand.
 
 ## Background
 The disadvantage of a FLASH memory is that it cannot be erased or written in single bytes. FLASH memory can only be erased and written in large blocks. A typical erase
@@ -24,7 +24,7 @@ For the FLASH, the page is considered the smallest block size that can be erased
 
 The first sector is initially erased. New registry entries are added sequentially to the FLASH. When an entry is updated, the old entry is marked as invalid and a new entry is written at the next available FLASH address. Once the first sector reaches capacity, all valid entries are copied to the second sector and the first sector is then erased. This process repeats itself.
 
-NVOL efficiently handles and keeps track of valid entries and their locations on FLASH. The sectors are managed dynamically
+NVOL efficiently handles and keeps track of valid entries and their locations on FLASH. The sectors are managed dynamically.
 
 ## Implementation
 
@@ -162,6 +162,6 @@ The shell is a project in and of itself, but is only included in this example fo
 
 # Porting
 
-The demo provides an emulation of the FLASH in RAM implemented in "crc/drivers/ramdrv.h/c". 
+The demo uses an emulation driver for FLASH in RAM. This is implemented in "crc/drivers/ramdrv.h/c". 
 
-In the same directory a sample driver for a real FLASH chip is proviced in the files spiflash.h/c. This was implemeted using the ChibiOS/HAL SPI driver and should be a good starting point for porting NVOL to your own platform.
+In the same directory a sample driver for a real FLASH chip is proviced in the files "spiflash.h/c". This was implemeted using the ChibiOS/HAL SPI driver and should be a good starting point for porting NVOL to your own platform.
