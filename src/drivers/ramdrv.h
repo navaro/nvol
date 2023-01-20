@@ -39,14 +39,14 @@
 extern "C" {
 #endif
 
-	int32_t     nvram_init (void) ;
-	int32_t     nvram_start (void) ;
-	int32_t     nvram_stop (void) ;
+	int32_t     ramdrv_init (void) ;
+	int32_t     ramdrv_start (void) ;
+	int32_t     ramdrv_stop (void) ;
 
 
-	int32_t     nvram_read (uint32_t addr, uint32_t len, uint8_t * data) ;
-	int32_t     nvram_write (uint32_t addr, uint32_t len, uint8_t * data) ;
-	int32_t     nvram_erase (uint32_t addr_start, uint32_t addr_end) ;
+	int32_t     ramdrv_read (uint32_t addr, uint32_t len, uint8_t * data) ;
+	int32_t     ramdrv_write (uint32_t addr, uint32_t len, uint8_t * data) ;
+	int32_t     ramdrv_erase (uint32_t addr_start, uint32_t addr_end) ;
 
 
 #ifdef __cplusplus

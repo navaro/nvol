@@ -24,18 +24,18 @@
 #include "system_config.h"
 #if CFG_REGISTRY_USE
 #include "registry.h"
-#include "common/errordef.h"
-#include "common/debug.h"
-#include "nvram/nvol3.h"
-#include "drivers/nvram.h"
-#include "shell/corshell.h"
+#include <common/errordef.h>
+#include <common/debug.h>
+#include <nvram/nvol3.h>
+#include <drivers/ramdrv.h>
+#include <shell/corshell.h>
 #if CFG_STRSUB_USE
-#include "common/strsub.h"
+#include <common/strsub.h>
 #endif
 
 
 NVOL3_INSTANCE_DECL(_regdef_nvol3_entry,
-		nvram_read, nvram_write, nvram_erase,
+		ramdrv_read, ramdrv_write, ramdrv_erase,
         NVOL3_REGISTRY_START,
         NVOL3_REGISTRY_START + NVOL3_REGISTRY_SECTOR_SIZE,
         NVOL3_REGISTRY_SECTOR_SIZE,

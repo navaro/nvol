@@ -8,7 +8,7 @@ SRCS := \
 			src/common/heap.c               \
 			src/common/strsub.c             \
 			src/nvram/nvol3.c               \
-			src/nvram/nvram.c               \
+			src/drivers/ramdrv.c               \
 			src/registry/registry.c         \
 			src/registry/registrycmd.c      \
 			src/shell/corshell.c            \

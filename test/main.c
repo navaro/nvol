@@ -14,10 +14,9 @@
 #include <errno.h>
 #include <unistd.h>
 
-
-#include "shell/corshell.h"
-#include "registry/registry.h"
-#include "drivers/nvram.h"
+#include <drivers/ramdrv.h>
+#include <shell/corshell.h>
+#include <registry/registry.h>
 
 #define SHELL_VERSION_STR       "Navaro corshell Demo v '" __DATE__ "'"
 #define SHELL_PROMPT            "# >"
@@ -49,8 +48,8 @@ main(int argc, char* argv[])
     /*
      * Initialise drivers.
      */
-    nvram_init () ;
-    nvram_start () ;
+    ramdrv_init () ;
+    ramdrv_start () ;
     /*
      * Initialise the shell.
      */
@@ -92,7 +91,7 @@ main(int argc, char* argv[])
     } while (!_shell_exit) ;
 
     registry_stop () ;
-    nvram_stop () ;
+    ramdrv_stop () ;
 
     return 0;
 }

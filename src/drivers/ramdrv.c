@@ -26,32 +26,32 @@
 #include <stdint.h>
 #include <common/errordef.h>
 
-#include "nvram.h"
+#include <drivers/ramdrv.h>
 
 
 #if !CFG_PLATFORM_SPIFLASH
 #define NVRAM_SIZE      (       \
         NVOL3_REGISTRY_SECTOR_SIZE*NVOL3_REGISTRY_SECTOR_COUNT \
         )
-static uint8_t          _nvram_test[NVRAM_SIZE] PLATFORM_SECTION_NOINIT ;
+static uint8_t          _ramdrv_test[NVRAM_SIZE] PLATFORM_SECTION_NOINIT ;
 #endif
 
 int32_t
-nvram_init (void)
+ramdrv_init (void)
 {
 
     return EOK;
 }
 
 int32_t
-nvram_start (void)
+ramdrv_start (void)
 {
 
     return EOK ;
 }
 
 int32_t
-nvram_stop (void)
+ramdrv_stop (void)
 {
 
     return EOK ;
@@ -60,42 +60,42 @@ nvram_stop (void)
 
 #if !CFG_PLATFORM_SPIFLASH
 int32_t
-nvram_erase (uint32_t addr_start, uint32_t addr_end)
+ramdrv_erase (uint32_t addr_start, uint32_t addr_end)
 {
     if (addr_end < addr_start) return E_PARM ;
     if (addr_start >= NVRAM_SIZE) return E_PARM ;
     if (addr_end >= NVRAM_SIZE) {
         addr_end = NVRAM_SIZE - 1 ;
     }
-    memset ((void*)(_nvram_test + addr_start), 0xFF, addr_end - addr_start) ;
+    memset ((void*)(_ramdrv_test + addr_start), 0xFF, addr_end - addr_start) ;
 
     return EOK ;
 }
 
 int32_t
-nvram_write (uint32_t addr, uint32_t len, uint8_t * data)
+ramdrv_write (uint32_t addr, uint32_t len, uint8_t * data)
 {
     uint32_t i ;
     if (addr >= NVRAM_SIZE) return E_PARM ;
     if (addr + len >= NVRAM_SIZE) return E_PARM ;
 
     for (i=0; i<len; i++) {
-        _nvram_test[i+addr] &= data[i] ;
+        _ramdrv_test[i+addr] &= data[i] ;
     }
 
 
-    // memcpy ((void*)(_nvram_test + addr), data, len) ;
+    // memcpy ((void*)(_ramdrv_test + addr), data, len) ;
 
     return EOK ;
 }
 
 int32_t
-nvram_read (uint32_t addr, uint32_t len, uint8_t * data)
+ramdrv_read (uint32_t addr, uint32_t len, uint8_t * data)
 {
     if (addr >= NVRAM_SIZE) return E_PARM ;
     if (addr + len >= NVRAM_SIZE) return E_PARM ;
 
-    memcpy (data, (void*)(_nvram_test + addr), len) ;
+    memcpy (data, (void*)(_ramdrv_test + addr), len) ;
 
     return EOK ;
 }
