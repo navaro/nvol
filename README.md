@@ -162,6 +162,6 @@ The shell is a project in and of itself, but is only included in this example fo
 
 # Porting
 
-The example provides an emulation of the FLASH in RAM implemented in "crc/drivers/ramdrv.h/c". 
+The demo provides an emulation of the FLASH in RAM implemented in "crc/drivers/ramdrv.h/c". 
 
-In the same directory a sample driver for a real FLASH chip is proviced in the files spiflash.h/c. This was implemeted using the ChibiOS/HAL SPI driver. THis wuld be a good starting point for porting NVOL to your own platform.
+In the same directory a sample driver for a real FLASH chip is proviced in the files spiflash.h/c. This was implemeted using the ChibiOS/HAL SPI driver and should be a good starting point for porting NVOL to your own platform.
