@@ -195,7 +195,7 @@ corshell_regtest (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc)
     corshell_print(ctx, CORSHELL_OUT_STD, shell_out,
               "registry testing %d times...\r\n", repeat) ;
 
-    snprintf(writeval, 20, "%.12u", intval++) ;
+    snprintf(writeval, 16, "%.12u", intval++) ;
     int32_t res = registry_value_set ("___test___", writeval,
                         strlen(writeval)+1) ;
 
@@ -207,7 +207,7 @@ corshell_regtest (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc)
     }
 
     while (repeat--) {
-        snprintf(writeval, 20, "%.12u", intval) ;
+        snprintf(writeval, 16, "%.12u", intval) ;
         int32_t res = registry_value_set ("___test___", writeval,
                             strlen(writeval)+1) ;
         if (res < 0) {
