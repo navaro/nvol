@@ -75,7 +75,7 @@ use 'help' or '?' for help.
 # >
 ```
 
-First, we will run a simple script to populate our registry with values. At the prompt type 
+First, we will run a simple script to populate our registry with values. At the prompt type:
 ```
 source ./test/reg.sh
 ```
