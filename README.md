@@ -98,27 +98,29 @@ We can now use the reg command to view and update the registry:
 1. list the entire contents of the regitry:
 ```
 # >reg
-user.address:           123 Main St.
-player.name:            cool_cat
-test:                   123
-user.occupation:        contributor
 player.age:             Ancient
-player.points:          9000
-user.email:             johnsmith@example.com
-user.phone_number:      555-555-5555
-user.age:               30
-player.status:          awakened
-player.species:         Dragon
-user.name:              John Smith
-player.level:           legendary
-user.favorite_color:    blue
-player.location:        Mount Olympus
-user.gender:            male
-player.power:           invisibility
-user.marital_status:    single
-player.weapon:          lightning bolt
-user.children:          0
 player.gender:          Otherworldly
+player.level:           legendary
+player.location:        Mount Olympus
+player.name:            cool_cat
+player.points:          9000
+player.power:           invisibility
+player.species:         Dragon
+player.status:          awakened
+player.weapon:          lightning bolt
+test:                   123
+user.address:           123 Main St.
+user.age:               30
+user.children:          0
+user.email:             johnsmith@example.com
+user.favorite_color:    blue
+user.gender:            male
+user.marital_status:    single
+user.name:              John Smith
+user.occupation:        contributor
+user.phone_number:      555-555-5555
+
+    21 entries found.
 ```
 
 2. Change the "favorite_color" of the user:
@@ -139,7 +141,24 @@ user.favorite_color:    yellow
 OK
 ```
 
-5. Look at the status of the registry:
+5. Filter only "player" entries:
+```
+# >reg player
+player.age:             Ancient
+player.gender:          Otherworldly
+player.level:           legendary
+player.location:        Mount Olympus
+player.name:            cool_cat
+player.points:          9000
+player.power:           invisibility
+player.species:         Dragon
+player.status:          awakened
+player.weapon:          lightning bolt
+
+    10 entries found.
+```
+
+6. Look at the status of the registry:
 ```
 # >regstats
 NVOL3 : : '_regdef_nvol3_entry' 20 / 255 records loaded
