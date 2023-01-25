@@ -18,7 +18,7 @@
 
 
 #define STORAGE_128K						(128*1024)
-#define STORAGE_96K							(95*1024)
+#define STORAGE_96K							(96*1024)
 #define STORAGE_64K							(64*1024)
 #define STORAGE_32K							(32*1024)
 #define STORAGE_16K							(16*1024)

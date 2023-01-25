@@ -45,7 +45,7 @@ extern "C" {
 
 
 	int32_t     ramdrv_read (uint32_t addr, uint32_t len, uint8_t * data) ;
-	int32_t     ramdrv_write (uint32_t addr, uint32_t len, uint8_t * data) ;
+	int32_t     ramdrv_write (uint32_t addr, uint32_t len, const uint8_t * data) ;
 	int32_t     ramdrv_erase (uint32_t addr_start, uint32_t addr_end) ;
 
 

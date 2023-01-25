@@ -120,7 +120,7 @@ typedef int32_t (*NVLOL3_TRANSACTION_CALLBACK_T)(struct NVOL3_INSTANCE_S * /*ins
  * FLASH access interface
  */
 typedef int32_t (*NVLOL3_NVRAM_READ_T)(uint32_t /*addr*/, uint32_t /*len*/, uint8_t * /*data*/) ;
-typedef int32_t (*NVLOL3_NVRAM_WRITE_T)(uint32_t /*addr*/, uint32_t /*len*/, uint8_t * /*data*/) ;
+typedef int32_t (*NVLOL3_NVRAM_WRITE_T)(uint32_t /*addr*/, uint32_t /*len*/, const uint8_t * /*data*/) ;
 typedef int32_t (*NVLOL3_NVRAM_ERASE_T)(uint32_t /*addr_start*/, uint32_t /*addr_end*/) ;
 
 typedef struct NVOL3_FLASH_IF_S {
@@ -229,6 +229,7 @@ extern "C" {
     int32_t         nvol3_validate (NVOL3_INSTANCE_T* instance) ;
     int32_t         nvol3_reset (NVOL3_INSTANCE_T* instance) ;
     int32_t         nvol3_delete (NVOL3_INSTANCE_T* instance) ;
+    int32_t         nvol3_repair (NVOL3_INSTANCE_T* instance) ;
     void            nvol3_unload (NVOL3_INSTANCE_T* instance) ;
 
     /*

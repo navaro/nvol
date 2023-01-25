@@ -73,7 +73,7 @@ ramdrv_erase (uint32_t addr_start, uint32_t addr_end)
 }
 
 int32_t
-ramdrv_write (uint32_t addr, uint32_t len, uint8_t * data)
+ramdrv_write (uint32_t addr, uint32_t len, const uint8_t * data)
 {
     uint32_t i ;
     if (addr >= NVRAM_SIZE) return E_PARM ;
