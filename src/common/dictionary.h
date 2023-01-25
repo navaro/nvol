@@ -32,6 +32,7 @@
 struct dictionary ;
 struct dlist ;
 
+typedef int  (*DLIST_COMPARE_T)(struct dictionary * /* dict */, uintptr_t parm, struct dlist * /* first */, struct dlist * /* second */) ;
 
 struct dlist { /* table entry: */
     struct dlist *          next; /* next entry in chain */
@@ -40,7 +41,9 @@ struct dlist { /* table entry: */
 
 struct dictionary_it {
     struct dlist *          np; /* this entry */
-    unsigned int            idx ;
+    int                     idx ;
+    DLIST_COMPARE_T         cmp ;
+    uintptr_t               parm ;
 };
 
 
@@ -57,6 +60,7 @@ struct dictionary_it {
 #define DICTIONARY_MKKEY(keytype,spec)          (((uint32_t)(keytype)<<16) | ((uint32_t)(spec)))
 #define DICTIONARY_KEYSPEC_STRING               DICTIONARY_MKKEY(DICTIONARY_KEYTYPE_STRING, 0)
 #define DICTIONARY_KEYSPEC_CONST_STRING         DICTIONARY_MKKEY(DICTIONARY_KEYTYPE_CONST_STRING, 0)
+#define DICTIONARY_KEYSPEC_USHORT               DICTIONARY_MKKEY(DICTIONARY_KEYTYPE_USHORT, 0)
 #define DICTIONARY_KEYSPEC_UINT                 DICTIONARY_MKKEY(DICTIONARY_KEYTYPE_BINARY, 1)
 #define DICTIONARY_KEYSPEC_BINARY_2             DICTIONARY_MKKEY(DICTIONARY_KEYTYPE_BINARY, 2)
 #define DICTIONARY_KEYSPEC_BINARY_3             DICTIONARY_MKKEY(DICTIONARY_KEYTYPE_BINARY, 3)
@@ -76,7 +80,7 @@ void                    dictionary_remove_all(struct dictionary * dict, void (*c
 void                    dictionary_destroy(struct dictionary * dict) ;
 unsigned int            dictionary_count (struct dictionary * dict) ;
 
-struct dlist*           dictionary_it_first (struct dictionary * dict, struct dictionary_it* it) ;
+struct dlist*           dictionary_it_first (struct dictionary * dict, struct dictionary_it* it, DLIST_COMPARE_T cmp, uintptr_t parm) ;
 struct dlist*           dictionary_it_next (struct dictionary * dict, struct dictionary_it* it) ;
 struct dlist*           dictionary_it_at (struct dictionary * dict, const char *key, unsigned int len, struct dictionary_it* it) ;
 struct dlist*           dictionary_it_get (struct dictionary * dict, struct dictionary_it* it) ;

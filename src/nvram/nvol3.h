@@ -122,6 +122,11 @@ typedef int32_t (*NVLOL3_TRANSACTION_CALLBACK_T)(struct NVOL3_INSTANCE_S * /*ins
 typedef int32_t (*NVLOL3_NVRAM_READ_T)(uint32_t /*addr*/, uint32_t /*len*/, uint8_t * /*data*/) ;
 typedef int32_t (*NVLOL3_NVRAM_WRITE_T)(uint32_t /*addr*/, uint32_t /*len*/, const uint8_t * /*data*/) ;
 typedef int32_t (*NVLOL3_NVRAM_ERASE_T)(uint32_t /*addr_start*/, uint32_t /*addr_end*/) ;
+/*
+ * Iterator callback
+ */
+typedef int32_t (*NVLOL3_IT_KEY_CMP_T)(const char * /* first*/, const char * /*second*/) ;
+
 
 typedef struct NVOL3_FLASH_IF_S {
     NVLOL3_NVRAM_READ_T     read ;
@@ -240,7 +245,7 @@ extern "C" {
     int32_t         nvol3_record_delete (NVOL3_INSTANCE_T* instance, NVOL3_RECORD_T *record) ;
     int32_t         nvol3_record_status (NVOL3_INSTANCE_T* instance, const char * key) ;
     int32_t         nvol3_record_key_and_data_length (NVOL3_INSTANCE_T* instance, const char * key) ;
-    int32_t         nvol3_record_first (NVOL3_INSTANCE_T* instance, NVOL3_RECORD_T *value, NVOL3_ITERATOR_T * it) ;
+    int32_t         nvol3_record_first (NVOL3_INSTANCE_T* instance, NVOL3_RECORD_T *value, NVOL3_ITERATOR_T * it, NVLOL3_IT_KEY_CMP_T cmp) ;
     int32_t         nvol3_record_next (NVOL3_INSTANCE_T* instance, NVOL3_RECORD_T *value, NVOL3_ITERATOR_T * it) ;
 
     /*

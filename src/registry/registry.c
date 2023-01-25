@@ -279,6 +279,12 @@ registry_value_set (REGISTRY_KEY_T id, const char* value, unsigned int length)
 static NVOL3_ITERATOR_T     _registry_it ;
 static char                 _registry_key[REGISTRY_KEY_LENGTH+1] ;
 
+static int32_t
+reg_cmp (REGISTRY_KEY_T first, REGISTRY_KEY_T second)
+{
+	return strcmp (first, second) ;
+}
+
 int32_t
 registry_first (REGISTRY_KEY_T* key, char* value, int length)
 {
@@ -288,7 +294,7 @@ registry_first (REGISTRY_KEY_T* key, char* value, int length)
 
     REGISTRY_LOCK();
     if ((res = nvol3_record_first (&_regdef_nvol3_entry,
-            (NVOL3_RECORD_T*)&_registry_value, &_registry_it)) >
+            (NVOL3_RECORD_T*)&_registry_value, &_registry_it, reg_cmp)) >
             REGISTRY_KEY_TYPE_LEN) {
         res -= REGISTRY_KEY_TYPE_LEN ;
         if (res < length) {

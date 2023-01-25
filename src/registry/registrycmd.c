@@ -60,10 +60,10 @@ reg_print (void* ctx, CORSHELL_OUT_FP shell_out, REGISTRY_KEY_T key, char* value
             tmp, 24, "%s" CORSHELL_NEWLINE, value) ;
 }
 
-static int32_t
+static uint32_t
 reg_show (void* ctx, CORSHELL_OUT_FP shell_out, const char * search, char * value, uint32_t len)
 {
-    int32_t found = EFAIL ;
+    uint32_t cnt = 0 ;
     REGISTRY_KEY_T key ;
     int32_t res = registry_first (&key, value, len) ;
     while (res >= 0) {
@@ -72,13 +72,13 @@ reg_show (void* ctx, CORSHELL_OUT_FP shell_out, const char * search, char * valu
 
             reg_print (ctx, shell_out, key, value, len) ;
 
-            found = EOK ;
+            cnt++ ;
         }
         res = registry_next (&key, value, len) ;
 
     }
 
-    return found ;
+    return cnt ;
 }
 
 static int32_t
@@ -86,10 +86,13 @@ corshell_reg (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc)
 {
 
     char value[REGISTRY_VALUE_LENGT_MAX] ;
-    int32_t res = CORSHELL_CMD_E_OK ;
+    int32_t res  ;
+    uint32_t cnt ;
 
     if (argc == 1) {
-        res = reg_show (ctx, shell_out, 0, value, REGISTRY_VALUE_LENGT_MAX) ;
+        cnt = reg_show (ctx, shell_out, 0, value, REGISTRY_VALUE_LENGT_MAX) ;
+        corshell_print(ctx, CORSHELL_OUT_STD, shell_out,
+            "\r\n    %d entries found." CORSHELL_NEWLINE, cnt) ;
 
     }
     else if (argc == 2) {
@@ -99,7 +102,9 @@ corshell_reg (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc)
             reg_print (ctx, shell_out, argv[1], value, REGISTRY_VALUE_LENGT_MAX) ;
 
         } else {
-            res = reg_show (ctx, shell_out, argv[1], value, REGISTRY_VALUE_LENGT_MAX) ;
+            cnt = reg_show (ctx, shell_out, argv[1], value, REGISTRY_VALUE_LENGT_MAX) ;
+            corshell_print(ctx, CORSHELL_OUT_STD, shell_out,
+                "\r\n    %d entries found." CORSHELL_NEWLINE, cnt) ;
 
         }
 
@@ -114,7 +119,7 @@ corshell_reg (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc)
     }
 
 
-    return res ;
+    return CORSHELL_CMD_E_OK ;
 }
 
 static int32_t

@@ -184,7 +184,7 @@ read_variable_record (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T *rec,
                                     E_INVALID : E_UNKNOWN ;
     }
     if ((rec->head.length >
-        	(config->record_size - sizeof (NVOL3_RECORD_HEAD_T))) ) {
+            (config->record_size - sizeof (NVOL3_RECORD_HEAD_T))) ) {
         return E_UNKNOWN ;
     }
     if (rec->head.length) {
@@ -537,7 +537,7 @@ swap_sectors (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch)
         return status;
     }
 
-    for (m = dictionary_it_first (instance->dict, &it) ; m;  ) {
+    for (m = dictionary_it_first (instance->dict, &it, 0, 0) ; m;  ) {
         NVOL3_ENTRY_T* entry =
           (NVOL3_ENTRY_T*)dictionary_get_value(instance->dict, m) ;
         status = read_variable_record (instance, scratch, entry->idx, 0)  ;
@@ -1375,6 +1375,19 @@ nvol3_record_status (NVOL3_INSTANCE_T* instance, const char * key)
     return m ? EOK : E_NOTFOUND ;
 }
 
+static int
+nvol3_cmp (struct dictionary *  dict, uintptr_t parm, struct dlist *  first ,
+        struct dlist *  second )
+{
+    NVLOL3_IT_KEY_CMP_T cmp = (NVLOL3_IT_KEY_CMP_T) parm ;
+    if (cmp) {
+        return cmp (dictionary_get_key(dict, first),
+                dictionary_get_key(dict, second)) ;
+    }
+
+    return 0 ;
+}
+
 /**
  * @brief Initialise the iterator and return the first record in the volume.
  * @param[in] instance
@@ -1386,9 +1399,12 @@ nvol3_record_status (NVOL3_INSTANCE_T* instance, const char * key)
  */
 int32_t
 nvol3_record_first (NVOL3_INSTANCE_T* instance, NVOL3_RECORD_T *value,
-                    NVOL3_ITERATOR_T * it)
+                    NVOL3_ITERATOR_T * it, NVLOL3_IT_KEY_CMP_T cmp)
 {
-    struct dlist * m = dictionary_it_first (instance->dict, &it->it) ;
+    struct dlist * m ;
+
+    m = dictionary_it_first (instance->dict, &it->it, cmp ? nvol3_cmp : 0,
+            (uintptr_t)cmp) ;
     if (m) {
         int32_t status = _record_get (instance, value, m) ;
         if (status < 0) {
@@ -1445,7 +1461,7 @@ int32_t
 nvol3_entry_first (NVOL3_INSTANCE_T* instance, NVOL3_ITERATOR_T * it)
 {
     int32_t status = EFAIL ;
-    struct dlist * m = dictionary_it_first (instance->dict, &it->it) ;
+    struct dlist * m = dictionary_it_first (instance->dict, &it->it, 0, 0) ;
     if(m) {
         status = EOK ;
     }

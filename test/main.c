@@ -87,7 +87,6 @@ main(int argc, char* argv[])
         }
 
 
-
     } while (!_shell_exit) ;
 
     registry_stop () ;

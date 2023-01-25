@@ -154,7 +154,7 @@ dictionary_uint_keyval_alloc(struct dictionary * dict, const char *s, unsigned i
 
     np = (struct dlist *) DICTIONARY_MALLOC(dict->heap,
             sizeof(struct dlist) +
-			sizeof(unsigned int) +
+            sizeof(unsigned int) +
             valuesize);
     if (!np) return 0 ;
     np->keyval[0] =  *((unsigned int*)s)  ;
@@ -349,7 +349,7 @@ dictionary_init (heapspace heap, unsigned int keyspec, unsigned int hashsize)
         } else if (keyspec == DICTIONARY_KEYSPEC_UINT) {
             dict->key = &uint_key ;
 
-        } else if (keyspec == DICTIONARY_KEYSPEC_CONST_STRING) {
+       } else if (keyspec == DICTIONARY_KEYSPEC_CONST_STRING) {
             dict->key = &const_str_key ;
 
         } else {
@@ -463,37 +463,80 @@ dictionary_destroy(struct dictionary * dict)
     DICTIONARY_FREE (dict->heap, dict) ;
 }
 
-struct dlist*
-dictionary_it_first (struct dictionary * dict, struct dictionary_it* it)
+static struct dlist*
+_it_next (struct dictionary * dict, struct dictionary_it* it)
 {
-    it->np = dict->hashtab[0];
-    it->idx = 0 ;
-    if (it->np) return it->np ;
-
-    return dictionary_it_next (dict, it) ;
-}
-
-struct dlist*
-dictionary_it_next (struct dictionary * dict, struct dictionary_it* it)
-{
-   struct dlist *np;
+    struct dlist *np;
     unsigned  i ;
 
     if (it->np && it->np->next) {
         it->np = it->np->next ;
         return it->np ;
     }
-     for (i=it->idx+1; i<dict->hashsize; i++) {
-         for (np = dict->hashtab[i]; np != 0; ) {
-                 it->np = np ;
-                 it->idx = i ;
-                 return np ;
- 
-         }
-     }
+    for (i=it->idx+1; i<dict->hashsize; i++) {
+        for (np = dict->hashtab[i]; np != 0; ) {
+             it->np = np ;
+             it->idx = i ;
+             return np ;
 
-     return 0 ;
+        }
+    }
+    it->np = 0 ;
+    return 0 ;
 
+}
+
+struct dlist*
+dictionary_it_first (struct dictionary * dict, struct dictionary_it* it,
+                    DLIST_COMPARE_T cmp, uintptr_t parm)
+{
+    struct dlist *np ;
+    struct dlist *nextnp = 0 ;
+    it->idx = -1 ;
+    it->cmp = cmp ;
+    it->parm = parm ;
+    it->np = 0 ;
+
+    nextnp = _it_next (dict, it) ;
+    if (!it->cmp || !nextnp) return nextnp ;
+
+    while ((np = _it_next (dict, it))) {
+        if (it->cmp(dict, it->parm, nextnp, np)>0) {
+            nextnp = np ;
+        }
+    }
+
+    it->np = nextnp ;
+    it->idx = -1 ;
+    return nextnp ;
+}
+
+
+struct dlist*
+dictionary_it_next (struct dictionary * dict, struct dictionary_it* it)
+{
+    struct dlist *nextnp  = 0 ;
+    struct dlist *np  ;
+    struct dictionary_it _it = {0, -1, 0} ;
+    if (!it->cmp) return _it_next (dict, it) ;
+
+    while ((np = _it_next (dict, &_it))) {
+        if (it->np == np) {
+           continue ;
+        }
+        if (it->cmp(dict, it->parm, it->np, np)>=0) {
+            continue ;
+        }
+        if (!nextnp) {
+            nextnp = np ;
+        }
+        else if (it->cmp(dict, it->parm, nextnp, np)>0) {
+            nextnp = np ;
+        }
+    }
+
+    it->np = nextnp ;
+    return nextnp ;
 }
 
 struct dlist*
