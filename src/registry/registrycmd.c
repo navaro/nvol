@@ -51,7 +51,7 @@ CORSHELL_CMD_LIST_END()
 
 
 
-void
+static void
 reg_print (void* ctx, CORSHELL_OUT_FP shell_out, REGISTRY_KEY_T key, char* value, int length)
 {
     char tmp[40] ;
@@ -67,12 +67,10 @@ reg_show (void* ctx, CORSHELL_OUT_FP shell_out, const char * search, char * valu
     REGISTRY_KEY_T key ;
     int32_t res = registry_first (&key, value, len) ;
     while (res >= 0) {
-
         if (!search || strstr(key, search)) {
-
             reg_print (ctx, shell_out, key, value, len) ;
-
             cnt++ ;
+            
         }
         res = registry_next (&key, value, len) ;
 
@@ -96,7 +94,6 @@ corshell_reg (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc)
 
     }
     else if (argc == 2) {
-
         res = registry_value_get (argv[1], value, REGISTRY_VALUE_LENGT_MAX) ;
         if (res > 0) {
             reg_print (ctx, shell_out, argv[1], value, REGISTRY_VALUE_LENGT_MAX) ;
@@ -110,9 +107,7 @@ corshell_reg (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc)
 
     }
     else if (argc == 3) {
-
         res = registry_value_set (argv[1], argv[2], strlen(argv[2])+ 1) ;
-
         corshell_print(ctx, CORSHELL_OUT_STD, shell_out,
             "%s" CORSHELL_NEWLINE, res == EOK ? "OK" : "ERR") ;
 
@@ -137,13 +132,11 @@ corshell_regadd (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc)
     if (res >= 0 ) {
         corshell_print(ctx, CORSHELL_OUT_STD, shell_out,
             "registry setting %s exists" CORSHELL_NEWLINE, argv[1]) ;
-
         return CORSHELL_CMD_E_EXIST ;
+        
     }
 
-
     res = registry_value_set (argv[1], argv[2],  strlen (argv[2]) + 1) ;
-
     corshell_print(ctx, CORSHELL_OUT_STD, shell_out,
         "%s" CORSHELL_NEWLINE, res == EOK ? "OK" : "ERR") ;
 
@@ -190,7 +183,6 @@ corshell_regtest (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc)
     char writeval[16] = {0} ;
     char readval[16] = {0} ;
     unsigned int intval = 0 ;
-
 
     if (argc > 1) {
         sscanf(argv[1], "%u", &repeat) ;
