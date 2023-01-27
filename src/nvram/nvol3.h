@@ -48,9 +48,9 @@
 #define NVOL3_SECTOR_VERSION                    NVOL3_SECTOR_VERSION_1
 
 
-#define NVOL3_PAGE_SIZE                         0x20            // one page used at the start of the sector.
-#define NVOL3_HEADROOM                          0x04            // min available slots before volume is full
-#define NVOL3_HEAP_SPACE                        HEAP_SPACE      // heap handle to allocate memory for nvol3.
+#define NVOL3_PAGE_SIZE                         0x20            /**< @brief one page used at the start of the sector */
+#define NVOL3_HEADROOM                          0x04            /**< @brief min available slots before volume is full */
+#define NVOL3_HEAP_SPACE                        HEAP_SPACE      /**< @brief heap handle to allocate memory for nvol3 */
 #define NVOL3_MALLOC(size)                      heap_malloc (HEAP_SPACE, size)
 #define NVOL3_FREE(mem)                         heap_free (HEAP_SPACE, mem)
 
@@ -154,10 +154,10 @@ typedef struct NVOL3_CONFIG_S {
     uint32_t            sector_size ;           /**< @brief  size of sector 1 and to. this must be a multiple of the supported FLASH page sizes */
     uint16_t            record_size ;           /**< @brief  max record size including header, key and value */
     uint16_t            local_size ;            /**< @brief  size of value to cache in ram (only cached if length is <= than this size) */
-    uint16_t            key_size ;              /**< @brief  key size used for indexing in dictionary. */
-    uint16_t            hashsize ;              /**< @brief  hash size for lookup table in dictionary. */
-    uint32_t            keyspec ;               /**< @brief  key type as defined for dictionary. */
-    uint16_t            version ;               /**< @brief  sector version, saved per sector and checked when volume is loaded. */
+    uint16_t            key_size ;              /**< @brief  key size used for indexing in dictionary */
+    uint16_t            hashsize ;              /**< @brief  hash size for lookup table in dictionary */
+    uint32_t            keyspec ;               /**< @brief  key type as defined for dictionary */
+    uint16_t            version ;               /**< @brief  sector version, saved per sector and checked when volume is loaded */
     uint16_t            reserved ;
 
     NVLOL3_TRANSACTION_CALLBACK_T transaction_cb ; /**< @brief  user keep track of the transaction state (should be persistent) */
