@@ -108,6 +108,10 @@ registry_start (void)
         status = nvol3_load (&_regdef_nvol3_entry) ;
     }
 #if CFG_STRSUB_USE
+    /*
+     * This Strsub handler  will try to replace text betwee '[' and ']' 
+     * with the regsitry value for the text as the key.
+     */
     strsub_install_handler(0, StrsubToken1, &_registry_strsub,
             registry_strsub_cb) ;
 #endif
@@ -210,8 +214,10 @@ registry_value_length (REGISTRY_KEY_T id)
     res = nvol3_record_key_and_data_length  (&_regdef_nvol3_entry, (const char*)_registry_value.key) ;
     if (res > REGISTRY_KEY_TYPE_LEN) {
         res -= REGISTRY_KEY_TYPE_LEN ;
-    } else {
+	    
+    } else if (res > 0) {
         res = 0 ;
+
     }
     REGISTRY_UNLOCK();
 
@@ -239,6 +245,7 @@ registry_value_get (REGISTRY_KEY_T id, char* value, unsigned int length)
             res = (int)length <= res ? (int)length : res ;
             memcpy(value, _registry_value.value, res) ;
         }
+	    
     } else if (res >= 0) {
         res = E_INVAL ;
 
@@ -275,7 +282,9 @@ registry_value_set (REGISTRY_KEY_T id, const char* value, unsigned int length)
 
 }
 
-
+/*
+ * Simple iterator. Should only be used by one client at a time!
+ */
 static NVOL3_ITERATOR_T     _registry_it ;
 static char                 _registry_key[REGISTRY_KEY_LENGTH+1] ;
 
@@ -299,6 +308,7 @@ registry_first (REGISTRY_KEY_T* key, char* value, int length)
         res -= REGISTRY_KEY_TYPE_LEN ;
         if (res < length) {
             length = res ;
+		
         }
         memcpy(value, (char*)_registry_value.value, length) ;
         strncpy(_registry_key, _registry_value.key, REGISTRY_KEY_LENGTH) ;
@@ -328,6 +338,7 @@ registry_next (REGISTRY_KEY_T* key, char* value, int length)
         res -= REGISTRY_KEY_TYPE_LEN ;
         if (res < length) {
             length = res ;
+		
         }
         memcpy(value, (char*)_registry_value.value, length) ;
         strncpy(_registry_key, _registry_value.key, REGISTRY_KEY_LENGTH) ;
