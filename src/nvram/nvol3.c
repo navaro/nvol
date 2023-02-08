@@ -65,23 +65,23 @@ typedef struct NVOL3_SECTOR_RECORD_S {
 /* Forward declarations.                                                     */
 /*===========================================================================*/
 
-static int32_t 			init_sectors (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch) ;
-static int32_t			swap_sectors (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch) ;
-static NVOL3_ENTRY_T*	retrieve_lookup_table (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* value) ;
-static int32_t			move_sector ( NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch, uint32_t dst_addr) ;
-static int32_t			construct_lookup_table ( NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch) ;
-static int32_t			insert_lookup_table (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* rec, uint16_t idx) ;
-static int32_t			variable_record_valid (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T *rec) ;
-static int32_t			set_variable_record_flags (NVOL3_INSTANCE_T * instance, uint32_t sector_addr,  uint16_t flags, uint16_t idx ) ;
-static int32_t			write_variable_record (NVOL3_INSTANCE_T * instance,  uint32_t sector_addr,  NVOL3_RECORD_T *rec, uint16_t idx ) ;
-static int32_t			read_variable_record (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T *rec, uint16_t idx, uint32_t bytes) ;
-static int32_t			read_variable_record_head (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_HEAD_T *head, uint16_t idx) ;
-static int32_t			erase_sector (const NVOL3_CONFIG_T * config, uint32_t sector_addr, uint32_t sector_size) ;
-static int32_t			set_sector_flags (const NVOL3_CONFIG_T * config, uint32_t sector_addr, uint32_t flags) ;
-static uint16_t			get_sector_version (const NVOL3_CONFIG_T * config, uint32_t sector_addr, uint32_t * flags) ;
-static int32_t			record_set (NVOL3_INSTANCE_T* instance, NVOL3_ENTRY_T* entry, NVOL3_RECORD_T *value, uint32_t key_and_data_length) ;
-static int32_t			record_get (NVOL3_INSTANCE_T* instance, NVOL3_RECORD_T *record, struct dlist * m) ;
-static int32_t 			nvol3_cmp (struct dictionary *  dict, uintptr_t parm, struct dlist *  first , struct dlist *  second ) ;
+static int32_t          init_sectors (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch) ;
+static int32_t          swap_sectors (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch) ;
+static NVOL3_ENTRY_T*   retrieve_lookup_table (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* value) ;
+static int32_t          move_sector ( NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch, uint32_t dst_addr) ;
+static int32_t          construct_lookup_table ( NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch) ;
+static int32_t          insert_lookup_table (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* rec, uint16_t idx) ;
+static int32_t          variable_record_valid (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T *rec) ;
+static int32_t          set_variable_record_flags (NVOL3_INSTANCE_T * instance, uint32_t sector_addr,  uint16_t flags, uint16_t idx ) ;
+static int32_t          write_variable_record (NVOL3_INSTANCE_T * instance,  uint32_t sector_addr,  NVOL3_RECORD_T *rec, uint16_t idx ) ;
+static int32_t          read_variable_record (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T *rec, uint16_t idx, uint32_t bytes) ;
+static int32_t          read_variable_record_head (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_HEAD_T *head, uint16_t idx) ;
+static int32_t          erase_sector (const NVOL3_CONFIG_T * config, uint32_t sector_addr, uint32_t sector_size) ;
+static int32_t          set_sector_flags (const NVOL3_CONFIG_T * config, uint32_t sector_addr, uint32_t flags) ;
+static uint16_t         get_sector_version (const NVOL3_CONFIG_T * config, uint32_t sector_addr, uint32_t * flags) ;
+static int32_t          record_set (NVOL3_INSTANCE_T* instance, NVOL3_ENTRY_T* entry, NVOL3_RECORD_T *value, uint32_t key_and_data_length) ;
+static int32_t          record_get (NVOL3_INSTANCE_T* instance, NVOL3_RECORD_T *record, struct dlist * m) ;
+static int32_t          nvol3_cmp (struct dictionary *  dict, uintptr_t parm, struct dlist *  first , struct dlist *  second ) ;
 
 
 /*===========================================================================*/
@@ -749,9 +749,9 @@ nvol3_entry_log_status (NVOL3_INSTANCE_T* instance, uint32_t verbose)
     if (verbose) {
         uint32_t sector1_flags, sector2_flags;
         uint16_t sector1_version = get_sector_version (config,
-        				config->sector1_addr, &sector1_flags) ;
+                        config->sector1_addr, &sector1_flags) ;
         uint16_t sector2_version = get_sector_version (config,
-        				config->sector2_addr, &sector2_flags) ;
+                        config->sector2_addr, &sector2_flags) ;
 
         DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
                 "record  : %d recordsize", config->record_size) ;
