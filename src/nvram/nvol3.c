@@ -27,11 +27,25 @@
 #include <common/errordef.h>
 #include "nvol3.h"
 
+/*===========================================================================*/
+/* Module constants.                                                         */
+/*===========================================================================*/
+
 #define TEST_ENTRY_WRITE        0
+
+#define NVOL3_INVALID_VAR_IDX     ((uint16_t)-1)
+
+/*===========================================================================*/
+/* Module macros.                                                            */
+/*===========================================================================*/
 
 #define FLASH_READ(flash, address, len, data)   flash.read (address, len, data)
 #define FLASH_WRITE(flash, address, len, data)  flash.write (address, len, data)
 #define FLASH_ERASE(flash, start, end)          flash.erase (start, end)
+
+/*===========================================================================*/
+/* Module data structures and types.                                         */
+/*===========================================================================*/
 
 #pragma pack(1)
 typedef struct NVOL3_SECTOR_RECORD_S {
@@ -47,14 +61,958 @@ typedef struct NVOL3_SECTOR_RECORD_S {
 #define NVOL3_SECTOR_VALID        0xAAAAFFFF
 #define NVOL3_SECTOR_INVALID      0xAAAAAAAA
 
-#define NVOL3_INVALID_VAR_IDX           ((uint16_t)-1)
+/*===========================================================================*/
+/* Forward declarations.                                                     */
+/*===========================================================================*/
+
+static int32_t 			init_sectors (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch) ;
+static int32_t			swap_sectors (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch) ;
+static NVOL3_ENTRY_T*	retrieve_lookup_table (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* value) ;
+static int32_t			move_sector ( NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch, uint32_t dst_addr) ;
+static int32_t			construct_lookup_table ( NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch) ;
+static int32_t			insert_lookup_table (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* rec, uint16_t idx) ;
+static int32_t			variable_record_valid (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T *rec) ;
+static int32_t			set_variable_record_flags (NVOL3_INSTANCE_T * instance, uint32_t sector_addr,  uint16_t flags, uint16_t idx ) ;
+static int32_t			write_variable_record (NVOL3_INSTANCE_T * instance,  uint32_t sector_addr,  NVOL3_RECORD_T *rec, uint16_t idx ) ;
+static int32_t			read_variable_record (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T *rec, uint16_t idx, uint32_t bytes) ;
+static int32_t			read_variable_record_head (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_HEAD_T *head, uint16_t idx) ;
+static int32_t			erase_sector (const NVOL3_CONFIG_T * config, uint32_t sector_addr, uint32_t sector_size) ;
+static int32_t			set_sector_flags (const NVOL3_CONFIG_T * config, uint32_t sector_addr, uint32_t flags) ;
+static uint16_t			get_sector_version (const NVOL3_CONFIG_T * config, uint32_t sector_addr, uint32_t * flags) ;
+static int32_t			record_set (NVOL3_INSTANCE_T* instance, NVOL3_ENTRY_T* entry, NVOL3_RECORD_T *value, uint32_t key_and_data_length) ;
+static int32_t			record_get (NVOL3_INSTANCE_T* instance, NVOL3_RECORD_T *record, struct dlist * m) ;
+static int32_t 			nvol3_cmp (struct dictionary *  dict, uintptr_t parm, struct dlist *  first , struct dlist *  second ) ;
+
+
+/*===========================================================================*/
+/* Interface Implementation.                                                 */
+/*===========================================================================*/
 
 static inline uint32_t
-max_records (NVOL3_INSTANCE_T * instance)
-{
+max_records (NVOL3_INSTANCE_T * instance) {
     const NVOL3_CONFIG_T    *   config = instance->config ;
     return (int32_t)((config->sector_size - NVOL3_PAGE_SIZE) /
                     config->record_size) ;
+}
+
+
+/**
+ * @brief Loads the volume defined in the config of the instance parameter
+ * @param[in/out] instance
+ * @return
+ * @retval EOK          success.
+ * @retval EFAIL        read or write to FLASH failed.
+ * @retval E_NOMEM       alloc failed.
+ */
+int32_t
+nvol3_load (NVOL3_INSTANCE_T* instance)
+{
+    int32_t status  ;
+    const NVOL3_CONFIG_T    *   config = instance->config ;
+    NVOL3_RECORD_T* scratch = NVOL3_MALLOC (config->record_size) ;
+
+    DBG_ASSERT_NVOL3 (config->record_size - sizeof (NVOL3_RECORD_HEAD_T) > 0,
+            "nvol3_load param!") ;
+
+    instance->sector = 0 ;
+    instance->next_idx = 0 ;
+    instance->inuse = 0 ;
+    instance->invalid = 0 ;
+
+    if (scratch) {
+
+        if (instance->dict) {
+            dictionary_destroy (instance->dict) ;
+            instance->dict = 0 ;
+
+        }
+        instance->dict = dictionary_init(NVOL3_HEAP_SPACE, config->keyspec,
+                config->hashsize) ;
+
+
+        if (instance->dict) {
+            status = init_sectors (instance, scratch) ;
+
+        } else {
+            status = E_NOMEM ;
+        }
+
+        NVOL3_FREE (scratch) ;
+
+        if (status == EOK) {
+
+            nvol3_entry_log_status (instance, 0) ;
+
+        } else {
+            DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_ASSERT,
+                    "NVOL3 :A: '%s' failed loading with %d!!",
+                    config->name, status) ;
+
+        }
+    } else {
+        status = E_NOMEM ;
+    }
+
+    return status ;
+}
+
+/**
+ * @brief Check if the volume on FLASH is a valid volume
+ * @param[in] instance *
+ * @return
+ * @retval EOK          success.
+ * @retval EFAIL        Invalid volume.
+ * @retval EVERSION     Incorrect sector version.
+ */
+int32_t
+nvol3_validate (NVOL3_INSTANCE_T* instance)
+{
+      const NVOL3_CONFIG_T  *   config = instance->config ;
+      uint32_t sector1_flags ;
+      uint32_t sector2_flags ;
+      uint16_t sector1_version =
+              get_sector_version (config, config->sector1_addr, &sector1_flags) ;
+      uint16_t sector2_version =
+              get_sector_version (config, config->sector2_addr, &sector2_flags) ;
+
+
+      if (  (sector1_flags == NVOL3_SECTOR_INITIALIZING) ||
+              (sector1_flags == NVOL3_SECTOR_VALID) ||
+              (sector1_flags == NVOL3_SECTOR_INVALID)) {
+              if ((sector1_version == config->version)) {
+                  return EOK ;
+              } else {
+                  return E_VERSION ;
+              }
+      }
+      if (  (sector2_flags == NVOL3_SECTOR_INITIALIZING) ||
+              (sector2_flags == NVOL3_SECTOR_VALID) ||
+              (sector2_flags == NVOL3_SECTOR_INVALID)) {
+              if ((sector2_version == config->version)) {
+                  return EOK ;
+              } else {
+                  return E_VERSION ;
+              }
+      }
+
+
+      return EFAIL ;
+}
+
+/**
+ * @brief Erase the volume
+ * @param[in] instance
+ * @return
+ * @retval EOK          success.
+ * @retval EFAIL        read or write to FLASH failed.
+ * @retval E_NOMEM       alloc failed.
+ */
+int32_t
+nvol3_reset (NVOL3_INSTANCE_T* instance)
+{
+    const NVOL3_CONFIG_T    *   config = instance->config ;
+    if (instance->dict) dictionary_destroy (instance->dict) ;
+    instance->dict = 0 ;
+
+    erase_sector(config, config->sector1_addr, config->sector_size) ;
+    erase_sector(config, config->sector2_addr, config->sector_size) ;
+
+    uint32_t sector1_flags, sector2_flags;
+    uint16_t sector1_version = get_sector_version (config, config->sector1_addr,
+            &sector1_flags) ;
+    uint16_t sector2_version = get_sector_version (config, config->sector2_addr,
+            &sector2_flags) ;
+
+    if (
+          (sector1_version) ||
+          (sector2_version) ||
+          (sector1_flags != 0xFFFFFFFF) ||
+          (sector2_flags != 0xFFFFFFFF)
+    )
+    {
+        DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_ASSERT,
+            "NVOL3 :A: '%s' failed resetting!!", config->name) ;
+
+    }
+
+    return nvol3_load (instance) ;
+}
+
+/**
+ * @brief Erase the volume
+ * @param[in] instance
+ * @return
+ * @retval EOK          success.
+ * @retval EFAIL        read or write to FLASH failed.
+ * @retval E_NOMEM       alloc failed.
+ */
+int32_t
+nvol3_delete (NVOL3_INSTANCE_T* instance)
+{
+    const NVOL3_CONFIG_T    *   config = instance->config ;
+    erase_sector(config, config->sector1_addr, config->sector_size) ;
+    erase_sector(config, config->sector2_addr, config->sector_size) ;
+
+    if (instance->dict) dictionary_destroy (instance->dict) ;
+    instance->dict = 0 ;
+
+    return EOK ;
+}
+
+/**
+ * @brief Try to repair a volume
+ * @note Do this by swapping the sectors and so reloading all valid records.
+ * @param[in] instance
+ * @return
+ * @retval EOK          success.
+ * @retval EFAIL        read or write to FLASH failed.
+ * @retval E_NOMEM      alloc failed.
+ */
+int32_t
+nvol3_repair (NVOL3_INSTANCE_T* instance)
+{
+    int32_t status ;
+
+    /* if sector is full then swap sectors */
+    const NVOL3_CONFIG_T    *   config = instance->config ;
+    NVOL3_RECORD_T* scratch   = NVOL3_MALLOC (config->record_size) ;
+    uint32_t src_addr, dst_addr ;
+
+    if (scratch == 0) return E_NOMEM ;
+
+
+    if (instance->sector == config->sector1_addr) {
+          src_addr = config->sector1_addr ;
+          dst_addr = config->sector2_addr ;
+    } else {
+          src_addr = config->sector2_addr ;
+          dst_addr = config->sector1_addr ;
+    }
+
+    DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_INFO,
+            "NVOL3 : : '%s' repair sectors dst 0x%x src 0x%x",
+            config->name, dst_addr, src_addr) ;
+
+    do {
+
+
+        if ((status = move_sector (instance, scratch, dst_addr)) != EOK) {
+            DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_ERROR,
+                    "NVOL3 :W: '%s' repair move sectors failed!", config->name) ;
+            break ;
+        }
+
+        /* now using destination sector */
+        instance->sector = dst_addr ;
+
+        /* regenerate lookup table */
+        construct_lookup_table(instance, scratch);
+
+        /* erase source sector */
+        if ((status = erase_sector(config, src_addr, config->sector_size)) != EOK) {
+            break ;
+        }
+        DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_LOG,
+                    "NVOL3 : : repair sectors completed") ;
+
+        break ;
+
+    } while (0) ;
+
+    NVOL3_FREE (scratch) ;
+
+    return status ;
+}
+
+/**
+ * @brief Unload the volume and free all memory
+ * @param[in] instance
+ */
+void
+nvol3_unload (NVOL3_INSTANCE_T* instance)
+{
+
+    if (instance->dict) dictionary_destroy (instance->dict) ;
+    instance->dict = 0 ;
+
+    return  ;
+}
+
+
+/**
+ * @brief Update or create a record in the volume.
+ * @notes   The header part of the record are used by the nvol2 and need
+ *          not be initialized by the caller.
+ * @param[in] instance
+ * @param[in] id
+ * @param[in] value
+ * @param[in] value_length
+ * @return
+ * @retval EOK          success.
+ * @retval EFAIL        read or write to FLASH failed.
+ * @retval E_NOMEM       alloc failed.
+ */
+int32_t
+nvol3_record_set (NVOL3_INSTANCE_T* instance, NVOL3_RECORD_T *value,
+                    uint32_t key_and_data_length)
+{
+    NVOL3_ENTRY_T* entry ;
+
+    /* if sector is full then swap sectors */
+    if (instance->next_idx >= max_records(instance)) {
+        const NVOL3_CONFIG_T    *   config = instance->config ;
+        NVOL3_RECORD_T* var   = NVOL3_MALLOC (config->record_size) ;
+        if (var == 0) return E_NOMEM ;
+
+          if (swap_sectors (instance, var) != EOK) {
+              /* if no space in new sector then no room for more variables */
+              NVOL3_FREE (var) ;
+              return EFAIL ;
+          }
+          NVOL3_FREE (var) ;
+
+    }
+
+    entry = retrieve_lookup_table(instance, value);
+
+    return record_set (instance, entry, value, key_and_data_length) ;
+}
+
+
+
+/**
+ * @brief Read a record in the volume.
+ * @notes   The header part of the record are used by the nvol2 and need
+ *          not be initialised by the caller. The caller should allocate
+ *          enough memory for value to read the complete record.
+ * @param[in] instance
+ * @param[in] id
+ * @param[in] out
+ * @return
+ * @retval EOK          success.
+ * @retval EFAIL        read or write to FLASH failed.
+ * @retval E_NOMEM       alloc failed.
+ */
+int32_t
+nvol3_record_get (NVOL3_INSTANCE_T* instance, NVOL3_RECORD_T *record)
+{
+    const NVOL3_CONFIG_T    *   config = instance->config ;
+    //uint16_t idx = NVOL3_INVALID_VAR_IDX;
+
+    struct dlist * m = dictionary_get (instance->dict,
+            (const char*)record->key_and_data, config->key_size) ;
+    return record_get (instance, record, m) ;
+}
+
+/**
+ * @brief Delete a record in the volume.
+ * @notes   The header part of the record are used by the nvol2 and need
+ *          not be initialized by the caller.
+ * @param[in] instance
+ * @param[in] id
+ * @param[in] value
+ * @return
+ * @retval EOK          success.
+ * @retval EFAIL        read or write to FLASH failed.
+ * @retval E_NOMEM       alloc failed.
+ */
+int32_t
+nvol3_record_delete (NVOL3_INSTANCE_T* instance, NVOL3_RECORD_T *record)
+{
+    const NVOL3_CONFIG_T    *   config = instance->config ;
+
+
+    memset (&record->head, 0, sizeof (NVOL3_RECORD_HEAD_T)) ;
+
+    struct dlist * m = dictionary_get (instance->dict,
+            (const char*)record->key_and_data, config->key_size) ;
+    if (m) {
+        //NVOL3_ENTRY_T* entry = (NVOL3_ENTRY_T*) m->value ;
+        NVOL3_ENTRY_T* entry =
+                (NVOL3_ENTRY_T*)dictionary_get_value(instance->dict, m) ;
+        uint16_t idx = entry->idx ;
+        set_variable_record_flags (instance,  instance->sector,
+                NVOL3_RECORD_FLAGS_INVALID, idx ) ;
+        instance->inuse-- ;
+        instance->invalid++ ;
+
+        dictionary_remove(instance->dict, (const char*)record->key_and_data,
+                config->key_size) ;
+
+        return EOK ;
+    }
+
+    return E_NOTFOUND ;
+}
+
+/**
+ * @brief Return the length of a record.
+ * @param[in] instance
+ * @param[in] id
+ * @return              Length of the record
+ * @retval EFAIL        Not a record.
+ */
+int32_t
+nvol3_record_key_and_data_length (NVOL3_INSTANCE_T* instance, const char * key)
+{
+    const NVOL3_CONFIG_T    *   config = instance->config ;
+    NVOL3_RECORD_HEAD_T head ;
+
+    struct dlist * m = dictionary_get (instance->dict, key, config->key_size) ;
+      if (m) {
+          //NVOL3_ENTRY_T* entry = (NVOL3_ENTRY_T*) m->value ;
+          NVOL3_ENTRY_T* entry =
+                  (NVOL3_ENTRY_T*)dictionary_get_value(instance->dict, m) ;
+
+          if (read_variable_record_head (instance, &head, entry->idx) == EOK) {
+              return head.length ;
+
+          }
+
+      }
+
+      return EFAIL ;
+}
+
+/**
+ * @brief
+ * @param[in] instance
+ * @param[in] id
+ * @return
+ * @retval EOK          Record exist.
+ * @retval EFAIL        Not a record.
+ */
+int32_t
+nvol3_record_status (NVOL3_INSTANCE_T* instance, const char * key)
+{
+    const NVOL3_CONFIG_T    *   config = instance->config ;
+    struct dlist * m = dictionary_get (instance->dict, key, config->key_size) ;
+
+    return m ? EOK : E_NOTFOUND ;
+}
+
+
+/**
+ * @brief Initialise the iterator and return the first record in the volume.
+ * @param[in] instance
+ * @param[out] value
+ * @param[in/out] it
+ * @return
+ * @retval EOK          Record exist.
+ * @retval EFAIL        FLASH read write or emty volume.
+ */
+int32_t
+nvol3_record_first (NVOL3_INSTANCE_T* instance, NVOL3_RECORD_T *value,
+                    NVOL3_ITERATOR_T * it, NVLOL3_IT_KEY_CMP_T cmp)
+{
+    struct dlist * m ;
+
+    m = dictionary_it_first (instance->dict, &it->it, cmp ? nvol3_cmp : 0,
+            (uintptr_t)cmp) ;
+    if (m) {
+        int32_t status = record_get (instance, value, m) ;
+        if (status < 0) {
+            DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
+                    "NVOL3 : : get record for %s not in lookup table!",
+                    dictionary_get_key (instance->dict, m)) ;
+
+        }
+        return status ;
+    }
+
+
+    return E_EOF ;
+}
+
+/**
+ * @brief Increments the iterator and return the value.
+ * @param[in] instance
+ * @param[out] value
+ * @param[in/out] it
+ * @return
+ * @retval EOK          Record exist.
+ * @retval EFAIL        FLASH read write or last record.
+ */
+int32_t
+nvol3_record_next (NVOL3_INSTANCE_T* instance, NVOL3_RECORD_T *value,
+                    NVOL3_ITERATOR_T * it)
+{
+    struct dlist * m = dictionary_it_next (instance->dict, &it->it) ;
+    if (m) {
+        int32_t status = record_get (instance, value, m) ;
+        if (status < 0) {
+            DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
+                    "NVOL3 : : get record for %s not in lookup table!",
+                    dictionary_get_key (instance->dict, m)) ;
+            //   status = 0 ;
+        }
+        return status ;
+    }
+
+    return E_EOF ;
+}
+
+
+/**
+ * @brief Initialize the iterator and return the first record in the volume.
+ * @param[in] instance
+ * @param[in/out] it
+ * @return
+ * @retval EOK          Record exist.
+ * @retval EFAIL        FLASH read write or emty volume.
+ */
+int32_t
+nvol3_entry_first (NVOL3_INSTANCE_T* instance, NVOL3_ITERATOR_T * it)
+{
+    int32_t status = EFAIL ;
+    struct dlist * m = dictionary_it_first (instance->dict, &it->it, 0, 0) ;
+    if(m) {
+        status = EOK ;
+    }
+
+    return status ;
+}
+
+/**
+ * @brief Increments the iterator and return the value.
+ * @param[in] instance
+ * @param[in/out] it
+ * @return
+ * @retval EOK          Record exist.
+ * @retval EFAIL        FLASH read write or last record.
+ */
+int32_t
+nvol3_entry_next (NVOL3_INSTANCE_T* instance, NVOL3_ITERATOR_T * it)
+{
+    int32_t status = EFAIL ;
+    struct dlist * m = dictionary_it_next (instance->dict, &it->it) ;
+    if(m) {
+        status = EOK ;
+
+    }
+
+    return status ;
+}
+
+/**
+ * @brief return the itarator for the key.
+ * @param[in] instance
+ * @param[in/out] it
+ * @return
+ * @retval EOK          Record exist.
+ * @retval E_NOTFOUND    FLASH read write or last record.
+ */
+int32_t
+nvol3_entry_at (NVOL3_INSTANCE_T* instance, const char * key,
+                NVOL3_ITERATOR_T * it)
+{
+    int32_t status = E_NOTFOUND ;
+    const NVOL3_CONFIG_T    *   config = instance->config ;
+
+    struct dlist * m = dictionary_it_at (instance->dict, key,
+            config->key_size, &it->it) ;
+    if(m) {
+        status = EOK ;
+
+    }
+
+    return status ;
+}
+
+/**
+ * @brief return the value for the iterator.
+ * @param[in] instance
+ * @param[in] it
+ * @param[out] data
+ * @return value length
+ */
+int32_t
+nvol3_entry_data (NVOL3_INSTANCE_T* instance, NVOL3_ITERATOR_T * it,
+                    char ** data)
+{
+    NVOL3_ENTRY_T* entry =
+            (NVOL3_ENTRY_T*)dictionary_get_value(instance->dict, it->it.np) ;
+    *data   =   (char *)entry->local ;
+
+    return entry->length ;
+}
+
+/**
+ * @brief return the key for the iterator.
+ * @param[in] instance
+ * @param[in] it
+ * @return key
+ */
+const char *
+nvol3_entry_key (NVOL3_INSTANCE_T* instance, NVOL3_ITERATOR_T * it)
+{
+    return dictionary_get_key (instance->dict, it->it.np) ;
+}
+
+/**
+ * @brief save the entry for the iterator to FLASH
+ * @param[in] instance
+ * @param[in] it
+ * @return status
+ */
+int32_t
+nvol3_entry_save (NVOL3_INSTANCE_T* instance, NVOL3_ITERATOR_T * it)
+{
+    int32_t status = E_NOMEM ;
+    const NVOL3_CONFIG_T    *   config = instance->config ;
+    NVOL3_ENTRY_T* entry  ;
+
+    NVOL3_RECORD_T* value = NVOL3_MALLOC (config->record_size) ;
+
+
+
+
+        if (value) {
+
+            if (instance->next_idx >= max_records(instance)) {
+                /* if sector is full then swap sectors */
+                  if (swap_sectors (instance, value) != EOK) {
+                      NVOL3_FREE (value) ;
+                      return EFAIL ;
+                  }
+
+            }
+
+            entry = (NVOL3_ENTRY_T*)dictionary_get_value(instance->dict,
+                            it->it.np) ;
+
+
+            memcpy (value->key_and_data,
+                    dictionary_get_key (instance->dict, it->it.np),
+                    config->key_size) ;
+            memcpy (value->key_and_data + config->key_size,
+                    entry->local, entry->length) ;
+
+            status = record_set (instance, entry, value,
+                    config->key_size + entry->length) ;
+
+            NVOL3_FREE (value) ;
+        }
+
+
+
+    return status ;
+}
+
+/**
+ * @brief delete the entry for the iterator from the dictionary and the FLASH
+ * @param[in] instance
+ * @param[in] it
+ * @return status
+ */
+int32_t
+nvol3_entry_delete (NVOL3_INSTANCE_T* instance, NVOL3_ITERATOR_T * it)
+{
+    int32_t status ;
+    const NVOL3_CONFIG_T    *   config = instance->config ;
+    NVOL3_ENTRY_T* entry =
+            (NVOL3_ENTRY_T*)dictionary_get_value(instance->dict, it->it.np) ;
+
+    uint16_t idx = entry->idx ;
+    status = set_variable_record_flags (instance,  instance->sector,
+            NVOL3_RECORD_FLAGS_INVALID, idx ) ;
+    instance->inuse-- ;
+    instance->invalid++ ;
+
+    if (dictionary_remove(instance->dict,
+            dictionary_get_key (instance->dict, it->it.np),
+            config->key_size) == 0) {
+        status = E_NOTFOUND ;
+    }
+
+    return status ;
+
+}
+
+
+int32_t
+nvol3_callback_tallie (struct NVOL3_INSTANCE_S * inst,
+                        struct NVOL3_RECORD_S * record, uint32_t ctx)
+{
+
+    return EOK ;
+}
+
+void
+nvol3_entry_log_status (NVOL3_INSTANCE_T* instance, uint32_t verbose)
+{
+    const NVOL3_CONFIG_T    *   config = instance->config ;
+    DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
+            "NVOL3 : : '%s' %d / %d records loaded",
+            config->name, dictionary_count(instance->dict),
+            max_records(instance)) ;
+    if (verbose) {
+        uint32_t sector1_flags, sector2_flags;
+        uint16_t sector1_version = get_sector_version (config,
+        				config->sector1_addr, &sector1_flags) ;
+        uint16_t sector2_version = get_sector_version (config,
+        				config->sector2_addr, &sector2_flags) ;
+
+        DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
+                "record  : %d recordsize", config->record_size) ;
+        DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
+                "        : 0x%.6x 1st sector version 0x%.4x flags 0x%.8x",
+                config->sector1_addr, (uint32_t)sector1_version,
+                sector1_flags) ;
+        DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
+                "        : 0x%.6x 2nd sector version 0x%.4x flags 0x%.8x",
+                config->sector2_addr, (uint32_t)sector2_version,
+                sector2_flags) ;
+        DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
+                "        : 0x%.6x sector size",
+                config->sector_size) ;
+        DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
+                "        : %d loaded",
+                dictionary_count(instance->dict)) ;
+        DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
+                "        : %d inuse",
+                instance->inuse) ;
+        DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
+                "        : %d invalid",
+                instance->invalid) ;
+        DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
+                "        : %d error",
+                instance->error) ;
+        DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
+                "        : %d lookup table bytes",
+                dictionary_count(instance->dict) * (sizeof(struct dlist *) +
+                        config->key_size + config->local_size)) ;
+
+        unsigned int s = dictionary_hashtab_size (instance->dict) ;
+        unsigned int i ;
+        unsigned int empty = 0, max = 0, used = 0 ;
+
+        DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
+                "        : %d dict hash size", s) ;
+
+        for (i=0; i< s; i++) {
+            unsigned int cnt = dictionary_hashtab_cnt (instance->dict, i) ;
+            if (cnt > max) max = cnt ;
+            if (!cnt) empty++ ;
+            if (cnt) used++ ;
+
+        }
+        DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
+                "        : dict hash - max %d, empty %d, used %d",
+                max, empty, used) ;
+
+    }
+
+}
+
+
+static int
+nvol3_cmp (struct dictionary *  dict, uintptr_t parm, struct dlist *  first ,
+        struct dlist *  second )
+{
+    NVLOL3_IT_KEY_CMP_T cmp = (NVLOL3_IT_KEY_CMP_T) parm ;
+    if (cmp) {
+        return cmp (dictionary_get_key(dict, first),
+                dictionary_get_key(dict, second)) ;
+    }
+
+    return 0 ;
+}
+
+static int32_t
+record_set (NVOL3_INSTANCE_T* instance, NVOL3_ENTRY_T* entry,
+            NVOL3_RECORD_T *value, uint32_t key_and_data_length)
+{
+    uint16_t flags;
+    uint16_t byte;
+    int32_t status ;
+    uint16_t num_same_bytes = 0;
+    uint16_t idx = NVOL3_INVALID_VAR_IDX;
+    const NVOL3_CONFIG_T    *   config = instance->config ;
+    NVOL3_RECORD_T* var = 0 ;
+
+    DBG_CHECK_NVOL3(config->record_size - sizeof (NVOL3_RECORD_HEAD_T) >=
+            key_and_data_length, EFAIL,
+            "nvol3_set_variable_record param!") ;
+
+    if (dictionary_count(instance->dict) >=
+                  (max_records(instance) - NVOL3_HEADROOM)) {
+               DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_WARNING,
+                       "NVOL3 :W: %s volume full (%d records)",
+                       config->name, dictionary_count(instance->dict)) ;
+
+              return EFAIL;
+
+      }
+
+      if (entry) {
+        idx = entry->idx ;
+          var = NVOL3_MALLOC (config->record_size) ;
+          if (var == 0) return E_NOMEM ;
+          flags = NVOL3_RECORD_FLAGS_NEW ;
+
+          /* get variable record */
+          if (read_variable_record (instance, var, idx, 0) == EOK) {
+            if (key_and_data_length == var->head.length) {
+                for (byte = 0; byte < key_and_data_length; byte++) {
+                  if (value->key_and_data[byte] == var->key_and_data[byte]) {
+                      num_same_bytes++;
+                  }
+                  else {
+                      break ;
+                  }
+                }
+            }
+
+          }
+
+      } else  {
+          flags = NVOL3_RECORD_FLAGS_NEW ;
+
+      }
+
+      if (num_same_bytes == key_and_data_length){
+            DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_INFO,
+                    " NVOL3_SetVariable no update required") ;
+            if (var) NVOL3_FREE (var) ;
+            return EOK;
+      }
+
+#if 0
+      // if sector is full then swap sectors
+      if (instance->next_idx >= max_records(instance))
+      {
+            if (var == 0) {
+              var = NVOL3_MALLOC (config->record_size) ;
+              if (var == 0) return E_NOMEM ;
+            }
+            if (swap_sectors (instance, var) != EOK) {
+                NVOL3_FREE (var) ;
+                return EFAIL ;
+            }
+            idx = NVOL3_INVALID_VAR_IDX ;
+            // if no space in new sector then no room for more variables
+            NVOL3_FREE (var) ;
+
+      } else
+#endif
+
+      if (var) {
+          NVOL3_FREE (var) ;
+      }
+
+
+      value->head.length = key_and_data_length ;
+      value->head.flags = flags ;
+      value->head.checksum = 0 ;
+      value->head.reserved = 0xFFFF ;
+      for (byte = 0; byte < key_and_data_length; byte++) {
+            value->head.checksum += value->key_and_data[byte];
+      }
+      value->head.checksum = 0x10000 - value->head.checksum;
+
+      if (config->write_cb) {
+          if ((status = config->write_cb (instance, value, config->ctx))
+                  != EOK) {
+              return status ;
+          }
+      }
+
+      // store record in sector
+      if ((status = write_variable_record(instance, instance->sector, value,
+              instance->next_idx)) != EOK) {
+          set_variable_record_flags (instance,  instance->sector,
+                  NVOL3_RECORD_FLAGS_INVALID, instance->next_idx ) ;
+          instance->next_idx++ ;
+          instance->invalid++ ;
+          instance->error++ ;
+
+          DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_ERROR,
+                   "NVOL3 :E: '%s' record_set error %d",
+                   config->name, status) ;
+
+
+          return status;
+      }
+      status = set_variable_record_flags (instance,  instance->sector,
+              NVOL3_RECORD_FLAGS_VALID, instance->next_idx ) ;
+#if TEST_ENTRY_WRITE
+          NVOL3_RECORD_HEAD_T h ;
+          status = read_variable_record_head (instance, &h, instance->next_idx) ;
+          if ((status != EOK) &&(h.checksum == value->head.checksum)) {
+              DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_ERROR,
+                       "NVOL3 :E: '%s' record_set error %d %.4x %.4x %.4x",
+                       config->name, status, (uint32_t)h.flags,
+                       (uint32_t)h.length, (uint32_t)h.checksum) ;
+
+          }
+#endif
+      instance->next_idx++ ;
+
+      if (status != EOK) {
+          return status ;
+      }
+      instance->inuse++ ;
+
+
+      if (idx != NVOL3_INVALID_VAR_IDX) {
+           // mark previous record as invalid
+           set_variable_record_flags (instance,  instance->sector,
+                   NVOL3_RECORD_FLAGS_INVALID, idx) ;
+           instance->inuse-- ;
+           instance->invalid++ ;
+
+       }
+
+      // get offset of next free location
+      if ((status = insert_lookup_table(instance, value, instance->next_idx-1 ))
+              != EOK) {
+          DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_ERROR,
+                  "nvol :E: '%s' failed insert %d", config->name, status) ;
+
+          return status ;
+      }
+
+      return EOK ;
+
+}
+
+static int32_t
+record_get (NVOL3_INSTANCE_T* instance, NVOL3_RECORD_T *record,
+                struct dlist * m)
+{
+    const NVOL3_CONFIG_T    *   config = instance->config ;
+    uint16_t idx = NVOL3_INVALID_VAR_IDX;
+      int32_t status  ;
+
+
+    memset (&record->head, 0, sizeof (NVOL3_RECORD_HEAD_T)) ;
+    if (m) {
+        NVOL3_ENTRY_T* entry =
+                (NVOL3_ENTRY_T*)dictionary_get_value(instance->dict, m) ;
+        if (entry->length <= config->local_size) {
+            memcpy (record->key_and_data,
+                    dictionary_get_key (instance->dict, m), config->key_size) ;
+            memcpy (&record->key_and_data[config->key_size],
+                    entry->local, entry->length) ;
+            return entry->length + config->key_size;
+        }
+        idx = entry->idx ;
+
+    }
+
+    if (idx == NVOL3_INVALID_VAR_IDX) {
+        DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_LOG,
+                " NVOL get record for 0x%x not in lookup table!",
+                *((uint32_t*)record->key_and_data)) ;
+        return E_NOTFOUND;
+    }
+
+    // get variable record
+    status = read_variable_record (instance, record, idx, 0) ;
+
+    if (status < 0) return status ;
+    return record->head.length ;
 }
 
 static uint16_t
@@ -114,6 +1072,7 @@ erase_sector (const NVOL3_CONFIG_T * config, uint32_t sector_addr,
     uint32_t status = FLASH_ERASE (config->flash, sector_addr, sector_addr + sector_size) ;
     return status ;
 }
+
 
 static int32_t
 read_variable_record_head_sector (NVOL3_INSTANCE_T * instance,
@@ -257,6 +1216,7 @@ variable_record_valid (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T *rec)
   return EOK;
 }
 
+
 static int32_t
 insert_lookup_table (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* rec,
                         uint16_t idx)
@@ -366,7 +1326,8 @@ construct_lookup_table ( NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch)
 
 }
 
-static inline int32_t
+
+static int32_t
 move_sector ( NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch,
                 uint32_t dst_addr)
 {
@@ -779,901 +1740,3 @@ init_sectors (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch)
 
   return construct_lookup_table (instance, scratch) ;
 }
-
-/**
- * @brief Loads the volume defined in the config of the instance parameter
- * @param[in/out] instance
- * @return
- * @retval EOK          success.
- * @retval EFAIL        read or write to FLASH failed.
- * @retval E_NOMEM       alloc failed.
- */
-int32_t
-nvol3_load (NVOL3_INSTANCE_T* instance)
-{
-    int32_t status  ;
-    const NVOL3_CONFIG_T    *   config = instance->config ;
-    NVOL3_RECORD_T* scratch = NVOL3_MALLOC (config->record_size) ;
-
-    DBG_ASSERT_NVOL3 (config->record_size - sizeof (NVOL3_RECORD_HEAD_T) > 0,
-            "nvol3_load param!") ;
-
-    instance->sector = 0 ;
-    instance->next_idx = 0 ;
-    instance->inuse = 0 ;
-    instance->invalid = 0 ;
-
-    if (scratch) {
-
-        if (instance->dict) {
-            dictionary_destroy (instance->dict) ;
-            instance->dict = 0 ;
-
-        }
-        instance->dict = dictionary_init(NVOL3_HEAP_SPACE, config->keyspec,
-                config->hashsize) ;
-
-
-        if (instance->dict) {
-            status = init_sectors (instance, scratch) ;
-
-        } else {
-            status = E_NOMEM ;
-        }
-
-        NVOL3_FREE (scratch) ;
-
-        if (status == EOK) {
-
-            nvol3_entry_log_status (instance, 0) ;
-
-        } else {
-            DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_ASSERT,
-                    "NVOL3 :A: '%s' failed loading with %d!!",
-                    config->name, status) ;
-
-        }
-    } else {
-        status = E_NOMEM ;
-    }
-
-    return status ;
-}
-
-/**
- * @brief Check if the volume on FLASH is a valid volume
- * @param[in] instance *
- * @return
- * @retval EOK          success.
- * @retval EFAIL        Invalid volume.
- * @retval EVERSION     Incorrect sector version.
- */
-int32_t
-nvol3_validate (NVOL3_INSTANCE_T* instance)
-{
-      const NVOL3_CONFIG_T  *   config = instance->config ;
-      uint32_t sector1_flags ;
-      uint32_t sector2_flags ;
-      uint16_t sector1_version =
-              get_sector_version (config, config->sector1_addr, &sector1_flags) ;
-      uint16_t sector2_version =
-              get_sector_version (config, config->sector2_addr, &sector2_flags) ;
-
-
-      if (  (sector1_flags == NVOL3_SECTOR_INITIALIZING) ||
-              (sector1_flags == NVOL3_SECTOR_VALID) ||
-              (sector1_flags == NVOL3_SECTOR_INVALID)) {
-              if ((sector1_version == config->version)) {
-                  return EOK ;
-              } else {
-                  return E_VERSION ;
-              }
-      }
-      if (  (sector2_flags == NVOL3_SECTOR_INITIALIZING) ||
-              (sector2_flags == NVOL3_SECTOR_VALID) ||
-              (sector2_flags == NVOL3_SECTOR_INVALID)) {
-              if ((sector2_version == config->version)) {
-                  return EOK ;
-              } else {
-                  return E_VERSION ;
-              }
-      }
-
-
-      return EFAIL ;
-}
-
-/**
- * @brief Erase the volume
- * @param[in] instance
- * @return
- * @retval EOK          success.
- * @retval EFAIL        read or write to FLASH failed.
- * @retval E_NOMEM       alloc failed.
- */
-int32_t
-nvol3_reset (NVOL3_INSTANCE_T* instance)
-{
-    const NVOL3_CONFIG_T    *   config = instance->config ;
-    if (instance->dict) dictionary_destroy (instance->dict) ;
-    instance->dict = 0 ;
-
-    erase_sector(config, config->sector1_addr, config->sector_size) ;
-    erase_sector(config, config->sector2_addr, config->sector_size) ;
-
-    uint32_t sector1_flags, sector2_flags;
-    uint16_t sector1_version = get_sector_version (config, config->sector1_addr,
-            &sector1_flags) ;
-    uint16_t sector2_version = get_sector_version (config, config->sector2_addr,
-            &sector2_flags) ;
-
-    if (
-          (sector1_version) ||
-          (sector2_version) ||
-          (sector1_flags != 0xFFFFFFFF) ||
-          (sector2_flags != 0xFFFFFFFF)
-    )
-    {
-        DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_ASSERT,
-            "NVOL3 :A: '%s' failed resetting!!", config->name) ;
-
-    }
-
-    return nvol3_load (instance) ;
-}
-
-/**
- * @brief Erase the volume
- * @param[in] instance
- * @return
- * @retval EOK          success.
- * @retval EFAIL        read or write to FLASH failed.
- * @retval E_NOMEM       alloc failed.
- */
-int32_t
-nvol3_delete (NVOL3_INSTANCE_T* instance)
-{
-    const NVOL3_CONFIG_T    *   config = instance->config ;
-    erase_sector(config, config->sector1_addr, config->sector_size) ;
-    erase_sector(config, config->sector2_addr, config->sector_size) ;
-
-    if (instance->dict) dictionary_destroy (instance->dict) ;
-    instance->dict = 0 ;
-
-    return EOK ;
-}
-
-/**
- * @brief Try to repair a volume
- * @note Do this by swapping the sectors and so reloading all valid records.
- * @param[in] instance
- * @return
- * @retval EOK          success.
- * @retval EFAIL        read or write to FLASH failed.
- * @retval E_NOMEM      alloc failed.
- */
-int32_t
-nvol3_repair (NVOL3_INSTANCE_T* instance)
-{
-    int32_t status ;
-
-    /* if sector is full then swap sectors */
-    const NVOL3_CONFIG_T    *   config = instance->config ;
-    NVOL3_RECORD_T* scratch   = NVOL3_MALLOC (config->record_size) ;
-    uint32_t src_addr, dst_addr ;
-
-    if (scratch == 0) return E_NOMEM ;
-
-
-    if (instance->sector == config->sector1_addr) {
-          src_addr = config->sector1_addr ;
-          dst_addr = config->sector2_addr ;
-    } else {
-          src_addr = config->sector2_addr ;
-          dst_addr = config->sector1_addr ;
-    }
-
-    DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_INFO,
-            "NVOL3 : : '%s' repair sectors dst 0x%x src 0x%x",
-            config->name, dst_addr, src_addr) ;
-
-    do {
-
-
-        if ((status = move_sector (instance, scratch, dst_addr)) != EOK) {
-            DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_ERROR,
-                    "NVOL3 :W: '%s' repair move sectors failed!", config->name) ;
-            break ;
-        }
-
-        /* now using destination sector */
-        instance->sector = dst_addr ;
-
-        /* regenerate lookup table */
-        construct_lookup_table(instance, scratch);
-
-        /* erase source sector */
-        if ((status = erase_sector(config, src_addr, config->sector_size)) != EOK) {
-            break ;
-        }
-        DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_LOG,
-                    "NVOL3 : : repair sectors completed") ;
-
-        break ;
-
-    } while (0) ;
-
-    NVOL3_FREE (scratch) ;
-
-    return status ;
-}
-
-/**
- * @brief Unload the volume and free all memory
- * @param[in] instance
- */
-void
-nvol3_unload (NVOL3_INSTANCE_T* instance)
-{
-
-    if (instance->dict) dictionary_destroy (instance->dict) ;
-    instance->dict = 0 ;
-
-    return  ;
-}
-
-
-static int32_t
-record_set (NVOL3_INSTANCE_T* instance, NVOL3_ENTRY_T* entry,
-            NVOL3_RECORD_T *value, uint32_t key_and_data_length)
-{
-    uint16_t flags;
-    uint16_t byte;
-    int32_t status ;
-    uint16_t num_same_bytes = 0;
-    uint16_t idx = NVOL3_INVALID_VAR_IDX;
-    const NVOL3_CONFIG_T    *   config = instance->config ;
-    NVOL3_RECORD_T* var = 0 ;
-
-    DBG_CHECK_NVOL3(config->record_size - sizeof (NVOL3_RECORD_HEAD_T) >=
-            key_and_data_length, EFAIL,
-            "nvol3_set_variable_record param!") ;
-
-    if (dictionary_count(instance->dict) >=
-                  (max_records(instance) - NVOL3_HEADROOM)) {
-               DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_WARNING,
-                       "NVOL3 :W: %s volume full (%d records)",
-                       config->name, dictionary_count(instance->dict)) ;
-
-              return EFAIL;
-
-      }
-
-      if (entry) {
-        idx = entry->idx ;
-          var = NVOL3_MALLOC (config->record_size) ;
-          if (var == 0) return E_NOMEM ;
-          flags = NVOL3_RECORD_FLAGS_NEW ;
-
-          /* get variable record */
-          if (read_variable_record (instance, var, idx, 0) == EOK) {
-            if (key_and_data_length == var->head.length) {
-                for (byte = 0; byte < key_and_data_length; byte++) {
-                  if (value->key_and_data[byte] == var->key_and_data[byte]) {
-                      num_same_bytes++;
-                  }
-                  else {
-                      break ;
-                  }
-                }
-            }
-
-          }
-
-      } else  {
-          flags = NVOL3_RECORD_FLAGS_NEW ;
-
-      }
-
-      if (num_same_bytes == key_and_data_length){
-            DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_INFO,
-                    " NVOL3_SetVariable no update required") ;
-            if (var) NVOL3_FREE (var) ;
-            return EOK;
-      }
-
-#if 0
-      // if sector is full then swap sectors
-      if (instance->next_idx >= max_records(instance))
-      {
-            if (var == 0) {
-              var = NVOL3_MALLOC (config->record_size) ;
-              if (var == 0) return E_NOMEM ;
-            }
-            if (swap_sectors (instance, var) != EOK) {
-                NVOL3_FREE (var) ;
-                return EFAIL ;
-            }
-            idx = NVOL3_INVALID_VAR_IDX ;
-            // if no space in new sector then no room for more variables
-            NVOL3_FREE (var) ;
-
-      } else
-#endif
-
-      if (var) {
-          NVOL3_FREE (var) ;
-      }
-
-
-      value->head.length = key_and_data_length ;
-      value->head.flags = flags ;
-      value->head.checksum = 0 ;
-      value->head.reserved = 0xFFFF ;
-      for (byte = 0; byte < key_and_data_length; byte++) {
-            value->head.checksum += value->key_and_data[byte];
-      }
-      value->head.checksum = 0x10000 - value->head.checksum;
-
-      if (config->write_cb) {
-          if ((status = config->write_cb (instance, value, config->ctx))
-                  != EOK) {
-              return status ;
-          }
-      }
-
-      // store record in sector
-      if ((status = write_variable_record(instance, instance->sector, value,
-              instance->next_idx)) != EOK) {
-          set_variable_record_flags (instance,  instance->sector,
-                  NVOL3_RECORD_FLAGS_INVALID, instance->next_idx ) ;
-          instance->next_idx++ ;
-          instance->invalid++ ;
-          instance->error++ ;
-
-          DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_ERROR,
-                   "NVOL3 :E: '%s' record_set error %d",
-                   config->name, status) ;
-
-
-          return status;
-      }
-      status = set_variable_record_flags (instance,  instance->sector,
-              NVOL3_RECORD_FLAGS_VALID, instance->next_idx ) ;
-#if TEST_ENTRY_WRITE
-          NVOL3_RECORD_HEAD_T h ;
-          status = read_variable_record_head (instance, &h, instance->next_idx) ;
-          if ((status != EOK) &&(h.checksum == value->head.checksum)) {
-              DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_ERROR,
-                       "NVOL3 :E: '%s' record_set error %d %.4x %.4x %.4x",
-                       config->name, status, (uint32_t)h.flags,
-                       (uint32_t)h.length, (uint32_t)h.checksum) ;
-
-          }
-#endif
-      instance->next_idx++ ;
-
-      if (status != EOK) {
-          return status ;
-      }
-      instance->inuse++ ;
-
-
-      if (idx != NVOL3_INVALID_VAR_IDX) {
-           // mark previous record as invalid
-           set_variable_record_flags (instance,  instance->sector,
-                   NVOL3_RECORD_FLAGS_INVALID, idx) ;
-           instance->inuse-- ;
-           instance->invalid++ ;
-
-       }
-
-      // get offset of next free location
-      if ((status = insert_lookup_table(instance, value, instance->next_idx-1 ))
-              != EOK) {
-
-          DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_ERROR,
-                  "nvol :E: '%s' failed insert %d", config->name, status) ;
-
-          return status ;
-      }
-
-
-
-
-      return EOK ;
-
-}
-
-/**
- * @brief Update or create a record in the volume.
- * @notes   The header part of the record are used by the nvol2 and need
- *          not be initialized by the caller.
- * @param[in] instance
- * @param[in] id
- * @param[in] value
- * @param[in] value_length
- * @return
- * @retval EOK          success.
- * @retval EFAIL        read or write to FLASH failed.
- * @retval E_NOMEM       alloc failed.
- */
-int32_t
-nvol3_record_set (NVOL3_INSTANCE_T* instance, NVOL3_RECORD_T *value,
-                    uint32_t key_and_data_length)
-{
-    NVOL3_ENTRY_T* entry ;
-
-    /* if sector is full then swap sectors */
-    if (instance->next_idx >= max_records(instance)) {
-        const NVOL3_CONFIG_T    *   config = instance->config ;
-        NVOL3_RECORD_T* var   = NVOL3_MALLOC (config->record_size) ;
-        if (var == 0) return E_NOMEM ;
-
-          if (swap_sectors (instance, var) != EOK) {
-              /* if no space in new sector then no room for more variables */
-              NVOL3_FREE (var) ;
-              return EFAIL ;
-          }
-          NVOL3_FREE (var) ;
-
-    }
-
-    entry = retrieve_lookup_table(instance, value);
-
-    return record_set (instance, entry, value, key_and_data_length) ;
-}
-
-
-
-static int32_t
-_record_get (NVOL3_INSTANCE_T* instance, NVOL3_RECORD_T *record,
-                struct dlist * m)
-{
-    const NVOL3_CONFIG_T    *   config = instance->config ;
-    uint16_t idx = NVOL3_INVALID_VAR_IDX;
-      int32_t status  ;
-
-
-    memset (&record->head, 0, sizeof (NVOL3_RECORD_HEAD_T)) ;
-    if (m) {
-        NVOL3_ENTRY_T* entry =
-                (NVOL3_ENTRY_T*)dictionary_get_value(instance->dict, m) ;
-        if (entry->length <= config->local_size) {
-            memcpy (record->key_and_data,
-                    dictionary_get_key (instance->dict, m), config->key_size) ;
-            memcpy (&record->key_and_data[config->key_size],
-                    entry->local, entry->length) ;
-            return entry->length + config->key_size;
-        }
-        idx = entry->idx ;
-
-    }
-
-    if (idx == NVOL3_INVALID_VAR_IDX) {
-        DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_LOG,
-                " NVOL get record for 0x%x not in lookup table!",
-                *((uint32_t*)record->key_and_data)) ;
-        return E_NOTFOUND;
-    }
-
-    // get variable record
-    status = read_variable_record (instance, record, idx, 0) ;
-
-    if (status < 0) return status ;
-    return record->head.length ;
-}
-
-/**
- * @brief Read a record in the volume.
- * @notes   The header part of the record are used by the nvol2 and need
- *          not be initialised by the caller. The caller should allocate
- *          enough memory for value to read the complete record.
- * @param[in] instance
- * @param[in] id
- * @param[in] out
- * @return
- * @retval EOK          success.
- * @retval EFAIL        read or write to FLASH failed.
- * @retval E_NOMEM       alloc failed.
- */
-int32_t
-nvol3_record_get (NVOL3_INSTANCE_T* instance, NVOL3_RECORD_T *record)
-{
-    const NVOL3_CONFIG_T    *   config = instance->config ;
-    //uint16_t idx = NVOL3_INVALID_VAR_IDX;
-
-    struct dlist * m = dictionary_get (instance->dict,
-            (const char*)record->key_and_data, config->key_size) ;
-    return _record_get (instance, record, m) ;
-}
-
-/**
- * @brief Delete a record in the volume.
- * @notes   The header part of the record are used by the nvol2 and need
- *          not be initialized by the caller.
- * @param[in] instance
- * @param[in] id
- * @param[in] value
- * @return
- * @retval EOK          success.
- * @retval EFAIL        read or write to FLASH failed.
- * @retval E_NOMEM       alloc failed.
- */
-int32_t
-nvol3_record_delete (NVOL3_INSTANCE_T* instance, NVOL3_RECORD_T *record)
-{
-    const NVOL3_CONFIG_T    *   config = instance->config ;
-
-
-    memset (&record->head, 0, sizeof (NVOL3_RECORD_HEAD_T)) ;
-
-    struct dlist * m = dictionary_get (instance->dict,
-            (const char*)record->key_and_data, config->key_size) ;
-    if (m) {
-        //NVOL3_ENTRY_T* entry = (NVOL3_ENTRY_T*) m->value ;
-        NVOL3_ENTRY_T* entry =
-                (NVOL3_ENTRY_T*)dictionary_get_value(instance->dict, m) ;
-        uint16_t idx = entry->idx ;
-        set_variable_record_flags (instance,  instance->sector,
-                NVOL3_RECORD_FLAGS_INVALID, idx ) ;
-        instance->inuse-- ;
-        instance->invalid++ ;
-
-        dictionary_remove(instance->dict, (const char*)record->key_and_data,
-                config->key_size) ;
-
-        return EOK ;
-    }
-
-    return E_NOTFOUND ;
-}
-
-/**
- * @brief Return the length of a record.
- * @param[in] instance
- * @param[in] id
- * @return              Length of the record
- * @retval EFAIL        Not a record.
- */
-int32_t
-nvol3_record_key_and_data_length (NVOL3_INSTANCE_T* instance, const char * key)
-{
-    const NVOL3_CONFIG_T    *   config = instance->config ;
-    NVOL3_RECORD_HEAD_T head ;
-
-    struct dlist * m = dictionary_get (instance->dict, key, config->key_size) ;
-      if (m) {
-          //NVOL3_ENTRY_T* entry = (NVOL3_ENTRY_T*) m->value ;
-          NVOL3_ENTRY_T* entry =
-                  (NVOL3_ENTRY_T*)dictionary_get_value(instance->dict, m) ;
-
-          if (read_variable_record_head (instance, &head, entry->idx) == EOK) {
-              return head.length ;
-
-          }
-
-      }
-
-      return EFAIL ;
-}
-
-/**
- * @brief
- * @param[in] instance
- * @param[in] id
- * @return
- * @retval EOK          Record exist.
- * @retval EFAIL        Not a record.
- */
-int32_t
-nvol3_record_status (NVOL3_INSTANCE_T* instance, const char * key)
-{
-    const NVOL3_CONFIG_T    *   config = instance->config ;
-    struct dlist * m = dictionary_get (instance->dict, key, config->key_size) ;
-
-    return m ? EOK : E_NOTFOUND ;
-}
-
-static int
-nvol3_cmp (struct dictionary *  dict, uintptr_t parm, struct dlist *  first ,
-        struct dlist *  second )
-{
-    NVLOL3_IT_KEY_CMP_T cmp = (NVLOL3_IT_KEY_CMP_T) parm ;
-    if (cmp) {
-        return cmp (dictionary_get_key(dict, first),
-                dictionary_get_key(dict, second)) ;
-    }
-
-    return 0 ;
-}
-
-/**
- * @brief Initialise the iterator and return the first record in the volume.
- * @param[in] instance
- * @param[out] value
- * @param[in/out] it
- * @return
- * @retval EOK          Record exist.
- * @retval EFAIL        FLASH read write or emty volume.
- */
-int32_t
-nvol3_record_first (NVOL3_INSTANCE_T* instance, NVOL3_RECORD_T *value,
-                    NVOL3_ITERATOR_T * it, NVLOL3_IT_KEY_CMP_T cmp)
-{
-    struct dlist * m ;
-
-    m = dictionary_it_first (instance->dict, &it->it, cmp ? nvol3_cmp : 0,
-            (uintptr_t)cmp) ;
-    if (m) {
-        int32_t status = _record_get (instance, value, m) ;
-        if (status < 0) {
-            DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
-                    "NVOL3 : : get record for %s not in lookup table!",
-                    dictionary_get_key (instance->dict, m)) ;
-
-        }
-        return status ;
-    }
-
-
-    return E_EOF ;
-}
-
-/**
- * @brief Increments the iterator and return the value.
- * @param[in] instance
- * @param[out] value
- * @param[in/out] it
- * @return
- * @retval EOK          Record exist.
- * @retval EFAIL        FLASH read write or last record.
- */
-int32_t
-nvol3_record_next (NVOL3_INSTANCE_T* instance, NVOL3_RECORD_T *value,
-                    NVOL3_ITERATOR_T * it)
-{
-    struct dlist * m = dictionary_it_next (instance->dict, &it->it) ;
-    if (m) {
-        int32_t status = _record_get (instance, value, m) ;
-        if (status < 0) {
-            DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
-                    "NVOL3 : : get record for %s not in lookup table!",
-                    dictionary_get_key (instance->dict, m)) ;
-            //   status = 0 ;
-        }
-        return status ;
-    }
-
-    return E_EOF ;
-}
-
-
-/**
- * @brief Initialize the iterator and return the first record in the volume.
- * @param[in] instance
- * @param[in/out] it
- * @return
- * @retval EOK          Record exist.
- * @retval EFAIL        FLASH read write or emty volume.
- */
-int32_t
-nvol3_entry_first (NVOL3_INSTANCE_T* instance, NVOL3_ITERATOR_T * it)
-{
-    int32_t status = EFAIL ;
-    struct dlist * m = dictionary_it_first (instance->dict, &it->it, 0, 0) ;
-    if(m) {
-        status = EOK ;
-    }
-
-    return status ;
-}
-
-/**
- * @brief Increments the iterator and return the value.
- * @param[in] instance
- * @param[in/out] it
- * @return
- * @retval EOK          Record exist.
- * @retval EFAIL        FLASH read write or last record.
- */
-int32_t
-nvol3_entry_next (NVOL3_INSTANCE_T* instance, NVOL3_ITERATOR_T * it)
-{
-    int32_t status = EFAIL ;
-    struct dlist * m = dictionary_it_next (instance->dict, &it->it) ;
-    if(m) {
-        status = EOK ;
-
-    }
-
-    return status ;
-}
-
-/**
- * @brief return the value.
- * @param[in] instance
- * @param[in/out] it
- * @return
- * @retval EOK          Record exist.
- * @retval E_NOTFOUND    FLASH read write or last record.
- */
-int32_t
-nvol3_entry_at (NVOL3_INSTANCE_T* instance, const char * key,
-                NVOL3_ITERATOR_T * it)
-{
-    int32_t status = E_NOTFOUND ;
-    const NVOL3_CONFIG_T    *   config = instance->config ;
-
-    struct dlist * m = dictionary_it_at (instance->dict, key,
-            config->key_size, &it->it) ;
-    if(m) {
-        status = EOK ;
-
-    }
-
-    return status ;
-}
-
-int32_t
-nvol3_entry_data (NVOL3_INSTANCE_T* instance, NVOL3_ITERATOR_T * it,
-                    char ** data)
-{
-    NVOL3_ENTRY_T* entry =
-            (NVOL3_ENTRY_T*)dictionary_get_value(instance->dict, it->it.np) ;
-    *data   =   (char *)entry->local ;
-
-    return entry->length ;
-}
-
-const char *
-nvol3_entry_key (NVOL3_INSTANCE_T* instance, NVOL3_ITERATOR_T * it)
-{
-    return dictionary_get_key (instance->dict, it->it.np) ;
-}
-
-
-int32_t
-nvol3_entry_save (NVOL3_INSTANCE_T* instance, NVOL3_ITERATOR_T * it)
-{
-    int32_t status = E_NOMEM ;
-    const NVOL3_CONFIG_T    *   config = instance->config ;
-    NVOL3_ENTRY_T* entry  ;
-
-    NVOL3_RECORD_T* value = NVOL3_MALLOC (config->record_size) ;
-
-
-
-
-        if (value) {
-
-            if (instance->next_idx >= max_records(instance)) {
-                /* if sector is full then swap sectors */
-                  if (swap_sectors (instance, value) != EOK) {
-                      NVOL3_FREE (value) ;
-                      return EFAIL ;
-                  }
-
-            }
-
-            entry = (NVOL3_ENTRY_T*)dictionary_get_value(instance->dict,
-                            it->it.np) ;
-
-
-            memcpy (value->key_and_data,
-                    dictionary_get_key (instance->dict, it->it.np),
-                    config->key_size) ;
-            memcpy (value->key_and_data + config->key_size,
-                    entry->local, entry->length) ;
-
-            status = record_set (instance, entry, value,
-                    config->key_size + entry->length) ;
-
-            NVOL3_FREE (value) ;
-        }
-
-
-
-    return status ;
-}
-
-int32_t
-nvol3_entry_delete (NVOL3_INSTANCE_T* instance, NVOL3_ITERATOR_T * it)
-{
-    int32_t status ;
-    const NVOL3_CONFIG_T    *   config = instance->config ;
-    NVOL3_ENTRY_T* entry =
-            (NVOL3_ENTRY_T*)dictionary_get_value(instance->dict, it->it.np) ;
-
-    uint16_t idx = entry->idx ;
-    status = set_variable_record_flags (instance,  instance->sector,
-            NVOL3_RECORD_FLAGS_INVALID, idx ) ;
-    instance->inuse-- ;
-    instance->invalid++ ;
-
-    if (dictionary_remove(instance->dict,
-            dictionary_get_key (instance->dict, it->it.np),
-            config->key_size) == 0) {
-        status = E_NOTFOUND ;
-    }
-
-    return status ;
-
-}
-
-
-int32_t
-nvol3_callback_tallie (struct NVOL3_INSTANCE_S * inst,
-                        struct NVOL3_RECORD_S * record, uint32_t ctx)
-{
-
-    return EOK ;
-}
-
-void
-nvol3_entry_log_status (NVOL3_INSTANCE_T* instance, uint32_t verbose)
-{
-    const NVOL3_CONFIG_T    *   config = instance->config ;
-    DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
-            "NVOL3 : : '%s' %d / %d records loaded",
-            config->name, dictionary_count(instance->dict),
-            max_records(instance)) ;
-    if (verbose) {
-        uint32_t sector1_flags, sector2_flags;
-        uint16_t sector1_version =
-                get_sector_version (config, config->sector1_addr, &sector1_flags) ;
-        uint16_t sector2_version =
-                get_sector_version (config, config->sector2_addr, &sector2_flags) ;
-
-        DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
-                "record  : %d recordsize", config->record_size) ;
-        DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
-                "        : 0x%.6x 1st sector version 0x%.4x flags 0x%.8x",
-                config->sector1_addr, (uint32_t)sector1_version,
-                sector1_flags) ;
-        DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
-                "        : 0x%.6x 2nd sector version 0x%.4x flags 0x%.8x",
-                config->sector2_addr, (uint32_t)sector2_version,
-                sector2_flags) ;
-        DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
-                "        : 0x%.6x sector size",
-                config->sector_size) ;
-        DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
-                "        : %d loaded",
-                dictionary_count(instance->dict)) ;
-        DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
-                "        : %d inuse",
-                instance->inuse) ;
-        DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
-                "        : %d invalid",
-                instance->invalid) ;
-        DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
-                "        : %d error",
-                instance->error) ;
-        DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
-                "        : %d lookup table bytes",
-                dictionary_count(instance->dict) * (sizeof(struct dlist *) +
-                        config->key_size + config->local_size)) ;
-
-        unsigned int s = dictionary_hashtab_size (instance->dict) ;
-        unsigned int i ;
-        unsigned int empty = 0, max = 0, used = 0 ;
-
-        DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
-                "        : %d dict hash size", s) ;
-
-        for (i=0; i< s; i++) {
-            unsigned int cnt = dictionary_hashtab_cnt (instance->dict, i) ;
-            if (cnt > max) max = cnt ;
-            if (!cnt) empty++ ;
-            if (cnt) used++ ;
-
-        }
-        DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
-                "        : dict hash - max %d, empty %d, used %d",
-                max, empty, used) ;
-
-    }
-
-}
-
