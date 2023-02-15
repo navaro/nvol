@@ -81,7 +81,6 @@ static int32_t          set_sector_flags (const NVOL3_CONFIG_T * config, uint32_
 static uint16_t         get_sector_version (const NVOL3_CONFIG_T * config, uint32_t sector_addr, uint32_t * flags) ;
 static int32_t          record_set (NVOL3_INSTANCE_T* instance, NVOL3_ENTRY_T* entry, NVOL3_RECORD_T *value, uint32_t key_and_data_length) ;
 static int32_t          record_get (NVOL3_INSTANCE_T* instance, NVOL3_RECORD_T *record, struct dlist * m) ;
-static int32_t          nvol3_cmp (struct dictionary *  dict, uintptr_t parm, struct dlist *  first , struct dlist *  second ) ;
 
 
 /*===========================================================================*/
@@ -491,6 +490,18 @@ nvol3_record_status (NVOL3_INSTANCE_T* instance, const char * key)
     return m ? EOK : E_NOTFOUND ;
 }
 
+static int
+nvol3_cmp (struct dictionary *  dict, uintptr_t parm, struct dlist *  first ,
+        struct dlist *  second )
+{
+    NVLOL3_IT_KEY_CMP_T cmp = (NVLOL3_IT_KEY_CMP_T) parm ;
+    if (cmp) {
+        return cmp (dictionary_get_key(dict, first),
+                dictionary_get_key(dict, second)) ;
+    }
+
+    return 0 ;
+}
 
 /**
  * @brief Initialise the iterator and return the first record in the volume.
@@ -806,18 +817,6 @@ nvol3_entry_log_status (NVOL3_INSTANCE_T* instance, uint32_t verbose)
 }
 
 
-static int
-nvol3_cmp (struct dictionary *  dict, uintptr_t parm, struct dlist *  first ,
-        struct dlist *  second )
-{
-    NVLOL3_IT_KEY_CMP_T cmp = (NVLOL3_IT_KEY_CMP_T) parm ;
-    if (cmp) {
-        return cmp (dictionary_get_key(dict, first),
-                dictionary_get_key(dict, second)) ;
-    }
-
-    return 0 ;
-}
 
 static int32_t
 record_set (NVOL3_INSTANCE_T* instance, NVOL3_ENTRY_T* entry,
@@ -1612,6 +1611,7 @@ init_sectors (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch)
           /* use sector 1 */
             instance->sector = config->sector1_addr ;
             erase_sector(config, config->sector1_addr, config->sector_size) ;
+            set_sector_flags(config, instance->sector, NVOL3_SECTOR_VALID) ;
             break ;
 
 
@@ -1677,15 +1677,8 @@ init_sectors (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch)
 
     case NVOL3_SECTOR_VALID:
       switch (sector2_flags)  {
-        /* sector 1 valid, sector 2 empty */
-        case NVOL3_SECTOR_EMPTY:
-          /* sector 1 is active */
-            instance->sector = config->sector1_addr ;
-
-            break ;
-
-
         /* sector 1 valid, sector 2 xxx */
+      	case NVOL3_SECTOR_EMPTY:
         case NVOL3_SECTOR_INITIALIZING:
        case NVOL3_SECTOR_INVALID:
         case NVOL3_SECTOR_VALID:
