@@ -8,9 +8,11 @@ SRCS := \
 			src/common/heap.c               \
 			src/common/strsub.c             \
 			src/nvram/nvol3.c               \
-			src/drivers/ramdrv.c               \
+			src/drivers/ramdrv.c            \
 			src/registry/registry.c         \
 			src/registry/registrycmd.c      \
+			src/registry/strtab.c           \
+			src/registry/strtabcmd.c        \
 			src/shell/corshell.c            \
 			src/shell/corshellcmd.c         \
 			test/main.c
