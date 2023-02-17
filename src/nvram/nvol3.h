@@ -154,7 +154,7 @@ typedef struct NVOL3_CONFIG_S {
     uint32_t            sector_size ;           /**< @brief  size of sector 1 and to. this must be a multiple of the supported FLASH page sizes */
     uint16_t            record_size ;           /**< @brief  max record size including header, key and value */
     uint16_t            local_size ;            /**< @brief  size of value to cache in ram (only cached if length is <= than this size) */
-    uint16_t            key_size ;              /**< @brief  key size used for indexing in dictionary */
+    uint16_t            key_size ;              /**< @brief  key size used for indexing in dictionary (length allocated in FLASH) */
     uint16_t            hashsize ;              /**< @brief  hash size for lookup table in dictionary */
     uint32_t            keyspec ;               /**< @brief  key type as defined for dictionary */
     uint16_t            version ;               /**< @brief  sector version, saved per sector and checked when volume is loaded */

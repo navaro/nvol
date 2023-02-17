@@ -62,19 +62,16 @@ dictionary_str_keyval_alloc(struct dictionary * dict, const char *s, unsigned in
 
     if (s == 0) return 0 ;
     np = (struct dlist *) DICTIONARY_MALLOC(dict->heap,
-            sizeof(struct dlist) +
-            sizeof(unsigned int) +
-            valuesize);
+            	sizeof(struct dlist) + sizeof(uintptr_t) + valuesize);
     if (!np) return 0 ;
-    if (keysize == 0) keysize = strlen(s) ;
+    keysize = strlen(s) ;
     p = (char *) DICTIONARY_MALLOC(dict->heap, keysize+1); /* +1 for ?\0? */
     if (!p ) {
         DICTIONARY_FREE(dict->heap, np);
         return 0;
     }
-   strncpy(p, s, keysize);
-   p[keysize] = '\0' ;
-   np->keyval[0] = (uintptr_t)p ;
+   strcpy(p, s);
+    np->keyval[0] = (uintptr_t)p ;
    return np ;
 }
 
@@ -93,7 +90,7 @@ dictionary_const_str_keyval_alloc(struct dictionary * dict, const char *s, unsig
     if (s == 0) return 0 ;
     np = (struct dlist *) DICTIONARY_MALLOC(dict->heap,
             sizeof(struct dlist) +
-            sizeof(unsigned int) +
+            sizeof(uintptr_t) +
             valuesize);
     if (!np) return 0 ;
     np->keyval[0] = (uintptr_t)s ;
@@ -112,8 +109,7 @@ dictionary_str_key_hash(struct dictionary * dict, const char *s, unsigned int ke
 {
     unsigned hashval;
     if (s == 0) return 0 ;
-    if (keysize == 0) keysize = strlen(s) ;
-    for (hashval = 0; (*s != '\0') && keysize; s++, keysize--) {
+    for (hashval = 0; *s != '\0'; s++) {
       hashval = *s + 31 * hashval;
     }
     return hashval % dict->hashsize;
@@ -124,8 +120,7 @@ dictionary_str_key_cmp(struct dictionary * dict, struct dlist *np, const char *s
 {
     char* p = (char*)np->keyval[0] ;
     if (s == p) return 1 ;// NULL key
-    if (keysize == 0) keysize = strlen(s) ;
-    if ((strncmp(s, p, keysize) == 0) && (p[keysize] == 0)) {
+    if (strcmp(s, p) == 0) {
         return 1 ;
     }
 
@@ -153,11 +148,9 @@ dictionary_uint_keyval_alloc(struct dictionary * dict, const char *s, unsigned i
     struct dlist * np ;
 
     np = (struct dlist *) DICTIONARY_MALLOC(dict->heap,
-            sizeof(struct dlist) +
-            sizeof(unsigned int) +
-            valuesize);
+            		sizeof(struct dlist) + sizeof(uint32_t) + valuesize);
     if (!np) return 0 ;
-    np->keyval[0] =  *((unsigned int*)s)  ;
+    np->keyval[0] =  *((uint32_t*)s)  ;
     return np ;
 }
 
@@ -190,14 +183,12 @@ static struct dlist *
 dictionary_binary_keyval_alloc(struct dictionary * dict, const char *s, unsigned int keysize, unsigned int valuesize) /* make a duplicate of s */
 {
     struct dlist * np ;
-    uint16_t len = dict->keyspec & 0xFFFF ;
+    uint16_t keylen = dict->keyspec & 0xFFFF ;
 
     np = (struct dlist *) DICTIONARY_MALLOC(dict->heap,
-            sizeof(struct dlist) +
-            len * sizeof(unsigned int) +
-            valuesize);
+            	sizeof(struct dlist) + keylen * sizeof(uint32_t) + valuesize);
     if (!np) return 0 ;
-    memcpy(np->keyval, s, len*sizeof(uint32_t)) ;
+    memcpy(np->keyval, s, keylen*sizeof(uint32_t)) ;
     return np ;
 }
 
@@ -212,9 +203,9 @@ dictionary_binary_keyval_free(struct dictionary * dict, struct dlist *np) /* mak
 static unsigned
 dictionary_binary_key_hash(struct dictionary * dict, const char *s, unsigned int keysize)
 {
-    unsigned int  * pkey = (unsigned int*)s ;
+	uint32_t  * pkey = (uint32_t*)s ;
     uint16_t len = dict->keyspec & 0xFFFF ;
-    uint16_t i ;
+    unsigned int i ;
     uint32_t hash = 0 ;
 
     for (i=0; i<len; i++) {
@@ -227,10 +218,10 @@ dictionary_binary_key_hash(struct dictionary * dict, const char *s, unsigned int
 static unsigned int
 dictionary_binary_key_cmp(struct dictionary * dict, struct dlist *np, const char *s, unsigned int keysize) /* make a duplicate of s */
 {
-    unsigned int  * pkey = (unsigned int*)s ;
-    unsigned int  * pkeyval = (unsigned int*)np->keyval ;
+	uint32_t  * pkey = (uint32_t*)s ;
+	uint32_t  * pkeyval = (uint32_t*)np->keyval ;
     uint16_t len = dict->keyspec & 0xFFFF ;
-    uint16_t i ;
+    unsigned int i ;
     uint32_t cmp = 1 ;
 
     for (i=0; i<len; i++) {
@@ -435,7 +426,7 @@ dictionary_remove(struct dictionary * dict, const char *key, unsigned int keysiz
 }
 
 void
-dictionary_remove_all(struct dictionary * dict, void (*cb)(struct dictionary *, struct dlist*, uint32_t), uint32_t parm)
+dictionary_remove_all(struct dictionary * dict, void (*cb)(struct dictionary *, struct dlist*, uintptr_t), uintptr_t parm)
 {
     struct dlist *np;
     unsigned  i ;
@@ -560,6 +551,20 @@ dictionary_get_key (struct dictionary * dict, struct dlist* np)
     return dict->key->key (dict, np) ;
 
 }
+
+unsigned int
+dictionary_get_key_size (struct dictionary * dict, struct dlist* np)
+{
+	if (!(dict->keyspec & 0xFFFF)) {
+		return strlen (dictionary_get_key (dict, np)) + 1 ;
+	}
+	if (dict->keyspec == DICTIONARY_KEYTYPE_USHORT) {
+		return sizeof (uint16_t) ;
+	}
+
+	return (dict->keyspec & 0xFFFF) * sizeof (uint32_t) ;
+}
+
 
 char*
 dictionary_get_value (struct dictionary * dict, struct dlist* np)

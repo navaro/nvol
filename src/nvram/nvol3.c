@@ -689,13 +689,16 @@ nvol3_entry_save (NVOL3_INSTANCE_T* instance, NVOL3_ITERATOR_T * it)
 
             }
 
+            memset (value, 0, sizeof(NVOL3_RECORD_T)) ;
             entry = (NVOL3_ENTRY_T*)dictionary_get_value(instance->dict,
                             it->it.np) ;
 
 
+            unsigned int keysize = dictionary_get_key_size (instance->dict,
+            						it->it.np) ;
+            if (keysize > config->key_size) keysize = config->key_size ;
             memcpy (value->key_and_data,
-                    dictionary_get_key (instance->dict, it->it.np),
-                    config->key_size) ;
+                    dictionary_get_key (instance->dict, it->it.np), keysize) ;
             memcpy (value->key_and_data + config->key_size,
                     entry->local, entry->length) ;
 
@@ -789,10 +792,24 @@ nvol3_entry_log_status (NVOL3_INSTANCE_T* instance, uint32_t verbose)
         DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
                 "        : %d error",
                 instance->error) ;
+
+        struct dictionary_it it ;
+        struct dlist* m = dictionary_it_first (instance->dict, &it, 0, 0) ;
+        unsigned int bytes = 0 ;
+        while (m) {
+        	NVOL3_ENTRY_T* entry =
+        	          (NVOL3_ENTRY_T*)dictionary_get_value(instance->dict, m) ;
+        	bytes += sizeof(uint16_t) * 2 ;
+        	if (entry->length <= config->local_size) bytes += entry->length ;
+
+        	bytes += sizeof(struct dlist *) ;
+        	if (!(instance->config->keyspec&0xFFFF)) bytes += sizeof (uintptr_t) ;
+        	bytes += dictionary_get_key_size (instance->dict, m) ;
+        	m = dictionary_it_next (instance->dict, &it) ;
+
+        }
         DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
-                "        : %d lookup table bytes",
-                dictionary_count(instance->dict) * (sizeof(struct dlist *) +
-                        config->key_size + config->local_size)) ;
+                "        : %d lookup table bytes", bytes) ;
 
         unsigned int s = dictionary_hashtab_size (instance->dict) ;
         unsigned int i ;
