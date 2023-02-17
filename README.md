@@ -179,6 +179,57 @@ These commands are all implemented in ```src/registry/registrycmd.c```. The impl
 
 The shell is a project in and of itself, but is only included in this example for demonstration purposes. It is easy to extend. Use ```?``` to see the complete list of commands implemented for this example.
 
+# NVOL String Table Example
+
+Where the registry makes use of strings to index the entries, the string table uses integer values. This approach requires less RAM resources.
+
+For this example there is also a script to populate the string table with values. At the prompt type:
+
+```
+source ./test/strtab.sh
+```
+
+Again, we can now list the string table with a simple command:
+
+```
+# >strtab
+0000   ENGLISH
+0001   The end of the world is our playground.
+0002   The company is family. The family is the company.
+0003   Escape the mundane. Embrace the extraordinary.
+0004   Work hard, live easy.
+0005   The future is now. Join us.
+0006   There is no I in team. But there is in severance.
+0007   We're not just a company. We're a movement.
+0008   Success is a journey, not a destination.
+0009   Innovation starts with you.
+0010   Welcome to the beginning of something great.
+0100   DUTCH
+0101   Het einde van de wereld is onze speeltuin.
+0102   Het bedrijf is familie. De familie is het bedrijf.
+0103   Ontsnap aan het alledaagse. Omarm het buitengewone.
+0104   Hard werken, makkelijk leven.
+0105   De toekomst is nu. Doe met ons mee.
+0106   Er is geen ik in team. Maar wel in ontslagvergoeding.
+0107   We zijn niet alleen een bedrijf. We zijn een beweging.
+0108   Succes is een reis, geen bestemming.
+0109   Innovatie begint bij jou.
+0110   Welkom bij het begin van iets groots.
+0999   test
+
+    23 entries found.
+# >
+```
+
+Like the registry, the string table example registers itself with the string substitution library to replace index values delimited with < > with the string in the string table. For example:
+
+```
+# >echo "<1>"
+The end of the world is our playground.
+# >
+```
+
+
 # Porting
 
 The demo uses an emulation driver for FLASH in RAM. This is implemented in "crc/drivers/ramdrv.h/c". 
