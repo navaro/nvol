@@ -12,6 +12,10 @@
 #define CFG_REGISTRY_USE					1
 #endif
 
+#ifndef CFG_STRTAB_USE
+#define CFG_STRTAB_USE                                          1
+#endif
+
 #ifndef CFG_PLATFORM_SVC_SERVICES
 #define CFG_PLATFORM_SVC_SERVICES			0
 #endif
@@ -31,5 +35,8 @@
 #define NVOL3_REGISTRY_SECTOR_SIZE			STORAGE_32K
 #define NVOL3_REGISTRY_SECTOR_COUNT			2
 
+#define NVOL3_STRTAB_START                              (NVOL3_REGISTRY_START + NVOL3_REGISTRY_SECTOR_SIZE*NVOL3_REGISTRY_SECTOR_COUNT)
+#define NVOL3_STRTAB_SECTOR_SIZE                        STORAGE_32K
+#define NVOL3_STRTAB_SECTOR_COUNT                       2
 
 #define PLATFORM_SECTION_NOINIT						__attribute__ ((section (".noinit")))

@@ -17,6 +17,7 @@
 #include <drivers/ramdrv.h>
 #include <shell/corshell.h>
 #include <registry/registry.h>
+#include <registry/strtab.h>
 
 #define SHELL_VERSION_STR       "Navaro corshell Demo v '" __DATE__ "'"
 #define SHELL_PROMPT            "# >"
@@ -59,36 +60,44 @@ main(int argc, char* argv[])
      */
     registry_init () ;
     registry_start () ;
-
     /*
-     * Just add one registry entry for testing purposes.
+     * Initialise the string table.
+     */
+    strtab_init () ;
+    strtab_start () ;
+    /*
+     * Just add one registry and strtab entry for testing purposes.
      */
     registry_value_set ("test", "123", strlen("123") + 1) ;
-
+    strtab_set(999, "test", strlen("test")+1) ;
     /*
      * Print startup and help text.
      */
     printf ("%s\r\n\r\n", SHELL_VERSION_STR) ;
     printf ("use 'help' or '?' for help.\r\n") ;
     printf ("%s", SHELL_PROMPT) ;
-
     /*
      * Now process the input from the command line as shell commands until
      * the "exit" command was executed.
      */
     do {
+
+        //corshell_script_run (0, corshell_out, "", ". test/strtab.sh", strlen(". test/strtab.sh")) ; ;
+        //corshell_script_run (0, corshell_out, "", ". test/reg.sh", strlen(". test/reg.sh")) ; ;
+
         char line[512];
         int len = get_line (line, 512) ;
-
         if (len > 0) {
             corshell_script_run (0, corshell_out, "", line, len) ;
             printf (SHELL_PROMPT) ;
 
         }
 
-
     } while (!_shell_exit) ;
-
+    /*
+     * Stop everything before we exit.
+     */
+    strtab_stop () ;
     registry_stop () ;
     ramdrv_stop () ;
 

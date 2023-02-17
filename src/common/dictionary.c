@@ -479,6 +479,7 @@ dictionary_it_first (struct dictionary * dict, struct dictionary_it* it,
 {
     struct dlist *np ;
     struct dlist *nextnp = 0 ;
+    int idx ;
     it->idx = -1 ;
     it->cmp = cmp ;
     it->parm = parm ;
@@ -490,11 +491,12 @@ dictionary_it_first (struct dictionary * dict, struct dictionary_it* it,
     while ((np = _it_next (dict, it))) {
         if (it->cmp(dict, it->parm, nextnp, np)>0) {
             nextnp = np ;
+            idx = it->idx ;
         }
     }
 
     it->np = nextnp ;
-    it->idx = -1 ;
+    it->idx = idx ;
     return nextnp ;
 }
 
@@ -502,10 +504,12 @@ dictionary_it_first (struct dictionary * dict, struct dictionary_it* it,
 struct dlist*
 dictionary_it_next (struct dictionary * dict, struct dictionary_it* it)
 {
+    if (!it->cmp) return _it_next (dict, it) ;
+
     struct dlist *nextnp  = 0 ;
     struct dlist *np  ;
-    struct dictionary_it _it = {0, -1, 0} ;
-    if (!it->cmp) return _it_next (dict, it) ;
+    struct dictionary_it _it = {0, -1, 0, 0} ;
+    int idx = -1 ;
 
     while ((np = _it_next (dict, &_it))) {
         if (it->np == np) {
@@ -516,13 +520,16 @@ dictionary_it_next (struct dictionary * dict, struct dictionary_it* it)
         }
         if (!nextnp) {
             nextnp = np ;
+            idx = _it.idx ;
         }
         else if (it->cmp(dict, it->parm, nextnp, np)>0) {
             nextnp = np ;
+            idx = _it.idx ;
         }
     }
 
     it->np = nextnp ;
+    it->idx = idx ;
     return nextnp ;
 }
 
