@@ -229,6 +229,8 @@ registry_value_length (REGISTRY_KEY_T id)
 /**
  * @brief      get the value
  * @param[in]   id
+ * @param[out]  value
+ * @param[in]   length
  * @return      length or < 0 (status)
  */
 int32_t

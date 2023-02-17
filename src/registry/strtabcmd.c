@@ -34,13 +34,16 @@
 
 
 static int32_t corshell_strtab (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc) ;
-static int32_t corshell_strtab_chk (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc) ;
-static int32_t corshell_strtab_erase (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc) ;
+static int32_t corshell_strtabchk (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc) ;
+static int32_t corshell_strtaberase (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc) ;
+static int32_t corshell_strtabstats (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc) ;
+
 
 CORSHELL_CMD_LIST_START(strtab, 0)
 CORSHELL_CMD_LIST(  "strtab", corshell_strtab,  "[idx] [value]")
-CORSHELL_CMD_LIST(  "strtab_chk", corshell_strtab_chk,  "<idx> <value>")
-CORSHELL_CMD_LIST(  "strtab_erase", corshell_strtab_erase,  " ")
+CORSHELL_CMD_LIST(  "strtabchk", corshell_strtabchk,  "<idx> <value>")
+CORSHELL_CMD_LIST(  "strtaberase", corshell_strtaberase,  "")
+CORSHELL_CMD_LIST(  "strtabstats", corshell_strtabstats,  "")
 CORSHELL_CMD_LIST_END()
 
 
@@ -90,6 +93,7 @@ int32_t corshell_strtab (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int 
     } else {
 
         int res ;
+        uint32_t cnt = 0 ;
         res = strtab_first (&key, (char*)value, STRTAB_LENGT_MAX) ;
 
         while (res > 0) {
@@ -97,18 +101,20 @@ int32_t corshell_strtab (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int 
             corshell_print (ctx, CORSHELL_OUT_STD, shell_out,
                     "%.4d   %s\r\n",
                     key, value) ;
+            cnt++ ;
 
             res = strtab_next (&key, (char*)value, STRTAB_LENGT_MAX) ;
 
         }
+        corshell_print(ctx, CORSHELL_OUT_STD, shell_out,
+            "\r\n    %d entries found." CORSHELL_NEWLINE, cnt) ;
 
-        shell_out (ctx, CORSHELL_OUT_STD, "OK\r\n") ;
     }
 
     return CORSHELL_CMD_E_OK ;
 }
 
-int32_t corshell_strtab_chk (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc)
+int32_t corshell_strtabchk (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc)
 {
     if (argc > 2) {
 
@@ -140,7 +146,7 @@ int32_t corshell_strtab_chk (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, 
     return CORSHELL_CMD_E_OK ;
 }
 
-int32_t corshell_strtab_erase (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc)
+int32_t corshell_strtaberase (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc)
 {
     int32_t status = strtab_erase () ;
 
@@ -155,6 +161,13 @@ int32_t corshell_strtab_erase (void* ctx, CORSHELL_OUT_FP shell_out, char** argv
 
     }
 
+    return CORSHELL_CMD_E_OK ;
+}
+
+static int32_t
+corshell_strtabstats (void* ctx, CORSHELL_OUT_FP shell_out, char** argv, int argc)
+{
+    registry_log_status () ;
     return CORSHELL_CMD_E_OK ;
 }
 

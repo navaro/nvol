@@ -692,7 +692,7 @@ nvol3_entry_save (NVOL3_INSTANCE_T* instance, NVOL3_ITERATOR_T * it)
 
 
             unsigned int keysize = dictionary_get_key_size (instance->dict,
-            						it->it.np) ;
+                                    it->it.np) ;
             if (keysize > config->key_size) keysize = config->key_size ;
             memcpy (value->key_and_data,
                     dictionary_get_key (instance->dict, it->it.np), keysize) ;
@@ -793,15 +793,15 @@ nvol3_entry_log_status (NVOL3_INSTANCE_T* instance, uint32_t verbose)
         struct dlist* m = dictionary_it_first (instance->dict, &it, 0, 0) ;
         unsigned int bytes = 0 ;
         while (m) {
-        	NVOL3_ENTRY_T* entry =
-        	          (NVOL3_ENTRY_T*)dictionary_get_value(instance->dict, m) ;
-        	bytes += sizeof(uint16_t) * 2 ;
-        	if (entry->length <= config->local_size) bytes += entry->length ;
+            NVOL3_ENTRY_T* entry =
+                      (NVOL3_ENTRY_T*)dictionary_get_value(instance->dict, m) ;
+            bytes += sizeof(uint16_t) * 2 ;
+            if (entry->length <= config->local_size) bytes += entry->length ;
 
-        	bytes += sizeof(struct dlist *) ;
-        	if (!(instance->config->keyspec&0xFFFF)) bytes += sizeof (uintptr_t) ;
-        	bytes += dictionary_get_key_size (instance->dict, m) ;
-        	m = dictionary_it_next (instance->dict, &it) ;
+            bytes += sizeof(struct dlist *) ;
+            if (!(instance->config->keyspec&0xFFFF)) bytes += sizeof (uintptr_t) ;
+            bytes += dictionary_get_key_size (instance->dict, m) ;
+            m = dictionary_it_next (instance->dict, &it) ;
 
         }
         DBG_MESSAGE_NVOL3 (DBG_MESSAGE_SEVERITY_REPORT,
@@ -1688,7 +1688,7 @@ init_sectors (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* scratch)
     case NVOL3_SECTOR_VALID:
       switch (sector2_flags)  {
         /* sector 1 valid, sector 2 xxx */
-      	case NVOL3_SECTOR_EMPTY:
+        case NVOL3_SECTOR_EMPTY:
         case NVOL3_SECTOR_INITIALIZING:
        case NVOL3_SECTOR_INVALID:
         case NVOL3_SECTOR_VALID:

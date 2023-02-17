@@ -58,8 +58,6 @@ NVOL3_UINT_INSTANCE_DECL(_repo3_string, \
 static NVOL3_STRTAB_T       _strtab_buffer ;
 
 
-
-
 #define STRTAB_LOCK_INIT()
 #define STRTAB_LOCK()
 #define STRTAB_UNLOCK()
@@ -71,6 +69,10 @@ static STRSUB_HANDLER_T _strtab_strsub ;
 
 #define STRTAB_IS_LOADED()          (_repo3_string.dict ? 1 : 0)
 
+/**
+ * @brief       One time initialisation
+ * @return      status
+ */
 int32_t
 strtab_init(void)
 {
@@ -81,6 +83,11 @@ strtab_init(void)
     return EOK ;
 }
 
+/**
+ * @brief       Start and load the string table lookup table.
+ * @note        If it is not a valid string table it will be reset.
+ * @return      status
+ */
 int32_t
 strtab_start(void)
 {
@@ -95,6 +102,10 @@ strtab_start(void)
     return status ;
 }
 
+/**
+ * @brief       Unload the string table and free all resources.
+ * @return      status
+ */
 void
 strtab_stop(void)
 {
@@ -103,6 +114,10 @@ strtab_stop(void)
     nvol3_unload (&_repo3_string) ;
 }
 
+/**
+ * @brief       Reset the string table.
+ * @return      status
+ */
 int32_t
 strtab_erase(void)
 {
@@ -112,6 +127,10 @@ strtab_erase(void)
     return status ;
 }
 
+/**
+ * @brief       Return the status of the entry in the stringtable
+ * @return      status - EOK or E_NOTFOUND
+ */
 int32_t
 strtab_valid (STRTAB_KEY_T key)
 {
@@ -119,6 +138,11 @@ strtab_valid (STRTAB_KEY_T key)
     return nvol3_record_status (&_repo3_string, (const char*)&key) ;
 }
 
+/**
+ * @brief      get the value length
+ * @param[in]   key
+ * @return      length or < 0 (status)
+ */
 int32_t
 strtab_length(STRTAB_KEY_T key)
 {
@@ -128,7 +152,7 @@ strtab_length(STRTAB_KEY_T key)
     res = nvol3_record_key_and_data_length  (&_repo3_string, (const char*)&key) ;
     if (res > (int)sizeof(uint16_t)*2) {
         res -= (int)sizeof(uint16_t)*2 ;
-    } else {
+    } else if (res > 0) {
         res = 0 ;
     }
 
@@ -138,7 +162,13 @@ strtab_length(STRTAB_KEY_T key)
 
 }
 
-
+/**
+ * @brief      get the value
+ * @param[in]   id
+ * @param[out]  value
+ * @param[in]   length
+ * @return      length or < 0 (status)
+ */
 int32_t
 strtab_get(STRTAB_KEY_T key, char* value, int length)
 {
@@ -147,22 +177,32 @@ strtab_get(STRTAB_KEY_T key, char* value, int length)
     if (!value) return E_PARM ;
     STRTAB_LOCK() ;
     _strtab_buffer.key = key ;
-    do {
-        if ((res = nvol3_record_get(&_repo3_string, (NVOL3_RECORD_T*)&_strtab_buffer)) <= (int)sizeof(uint16_t)*2) {
-            *value = '\0' ;
-            break ;
-        }
+
+    if ((res = nvol3_record_get(&_repo3_string,
+              (NVOL3_RECORD_T*)&_strtab_buffer)) > (int)sizeof(uint16_t)*2) {
+
         res -= sizeof(uint16_t)*2 ;
         if (res < length) {
             length = res ;
         }
         strncpy(value, (char*)_strtab_buffer.value, length) ;
-    } while (0) ;
+
+    } else if (res >= 0) {
+        res = E_INVAL ;
+
+    }
     STRTAB_UNLOCK() ;
 
     return res ;
 }
 
+/**
+ * @brief      set the value
+ * @param[in]   id
+ * @param[in]   value
+ * @param[in]   length
+ * @return      length or < 0 (status)
+ */
 int32_t
 strtab_set(STRTAB_KEY_T key, const char* value, int length)
 {
@@ -180,6 +220,9 @@ strtab_set(STRTAB_KEY_T key, const char* value, int length)
     return res ;
 }
 
+/*
+ * Simple iterator. Should only be used by one client at a time!
+ */
 static NVOL3_ITERATOR_T _strtab_it ;
 
 static int32_t
@@ -203,7 +246,6 @@ strtab_first (STRTAB_KEY_T* key, char* value, int length)
             length = res ;
         }
         strncpy(value, (char*)_strtab_buffer.value, length) ;
-        //*key = (STRTAB_KEY_T)_strtab_it.it.np->key ;
         *key = *(STRTAB_KEY_T*)dictionary_get_key(_repo3_string.dict, _strtab_it.it.np) ;
 
 
