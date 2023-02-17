@@ -395,11 +395,11 @@ nvol3_record_set (NVOL3_INSTANCE_T* instance, NVOL3_RECORD_T *value,
 int32_t
 nvol3_record_get (NVOL3_INSTANCE_T* instance, NVOL3_RECORD_T *record)
 {
-    const NVOL3_CONFIG_T    *   config = instance->config ;
+    //const NVOL3_CONFIG_T    *   config = instance->config ;
     //uint16_t idx = NVOL3_INVALID_VAR_IDX;
 
     struct dlist * m = dictionary_get (instance->dict,
-            (const char*)record->key_and_data, config->key_size) ;
+            (const char*)record->key_and_data) ;
     return record_get (instance, record, m) ;
 }
 
@@ -418,13 +418,12 @@ nvol3_record_get (NVOL3_INSTANCE_T* instance, NVOL3_RECORD_T *record)
 int32_t
 nvol3_record_delete (NVOL3_INSTANCE_T* instance, NVOL3_RECORD_T *record)
 {
-    const NVOL3_CONFIG_T    *   config = instance->config ;
-
+    //const NVOL3_CONFIG_T    *   config = instance->config ;
 
     memset (&record->head, 0, sizeof (NVOL3_RECORD_HEAD_T)) ;
 
     struct dlist * m = dictionary_get (instance->dict,
-            (const char*)record->key_and_data, config->key_size) ;
+            (const char*)record->key_and_data) ;
     if (m) {
         //NVOL3_ENTRY_T* entry = (NVOL3_ENTRY_T*) m->value ;
         NVOL3_ENTRY_T* entry =
@@ -435,8 +434,7 @@ nvol3_record_delete (NVOL3_INSTANCE_T* instance, NVOL3_RECORD_T *record)
         instance->inuse-- ;
         instance->invalid++ ;
 
-        dictionary_remove(instance->dict, (const char*)record->key_and_data,
-                config->key_size) ;
+        dictionary_remove(instance->dict, (const char*)record->key_and_data) ;
 
         return EOK ;
     }
@@ -454,10 +452,10 @@ nvol3_record_delete (NVOL3_INSTANCE_T* instance, NVOL3_RECORD_T *record)
 int32_t
 nvol3_record_key_and_data_length (NVOL3_INSTANCE_T* instance, const char * key)
 {
-    const NVOL3_CONFIG_T    *   config = instance->config ;
+    //const NVOL3_CONFIG_T    *   config = instance->config ;
     NVOL3_RECORD_HEAD_T head ;
 
-    struct dlist * m = dictionary_get (instance->dict, key, config->key_size) ;
+    struct dlist * m = dictionary_get (instance->dict, key) ;
       if (m) {
           //NVOL3_ENTRY_T* entry = (NVOL3_ENTRY_T*) m->value ;
           NVOL3_ENTRY_T* entry =
@@ -484,8 +482,8 @@ nvol3_record_key_and_data_length (NVOL3_INSTANCE_T* instance, const char * key)
 int32_t
 nvol3_record_status (NVOL3_INSTANCE_T* instance, const char * key)
 {
-    const NVOL3_CONFIG_T    *   config = instance->config ;
-    struct dlist * m = dictionary_get (instance->dict, key, config->key_size) ;
+    //const NVOL3_CONFIG_T    *   config = instance->config ;
+    struct dlist * m = dictionary_get (instance->dict, key) ;
 
     return m ? EOK : E_NOTFOUND ;
 }
@@ -618,10 +616,9 @@ nvol3_entry_at (NVOL3_INSTANCE_T* instance, const char * key,
                 NVOL3_ITERATOR_T * it)
 {
     int32_t status = E_NOTFOUND ;
-    const NVOL3_CONFIG_T    *   config = instance->config ;
+    //const NVOL3_CONFIG_T    *   config = instance->config ;
 
-    struct dlist * m = dictionary_it_at (instance->dict, key,
-            config->key_size, &it->it) ;
+    struct dlist * m = dictionary_it_at (instance->dict, key, &it->it) ;
     if(m) {
         status = EOK ;
 
@@ -723,7 +720,7 @@ int32_t
 nvol3_entry_delete (NVOL3_INSTANCE_T* instance, NVOL3_ITERATOR_T * it)
 {
     int32_t status ;
-    const NVOL3_CONFIG_T    *   config = instance->config ;
+    //const NVOL3_CONFIG_T    *   config = instance->config ;
     NVOL3_ENTRY_T* entry =
             (NVOL3_ENTRY_T*)dictionary_get_value(instance->dict, it->it.np) ;
 
@@ -734,8 +731,7 @@ nvol3_entry_delete (NVOL3_INSTANCE_T* instance, NVOL3_ITERATOR_T * it)
     instance->invalid++ ;
 
     if (dictionary_remove(instance->dict,
-            dictionary_get_key (instance->dict, it->it.np),
-            config->key_size) == 0) {
+            dictionary_get_key (instance->dict, it->it.np)) == 0) {
         status = E_NOTFOUND ;
     }
 
@@ -1242,10 +1238,8 @@ insert_lookup_table (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* rec,
     unsigned int localsize = rec->head.length - config->key_size ;
     if (localsize > config->local_size) localsize = 0 ;
 
-    dictionary_remove (instance->dict, (char*)&rec->key_and_data,
-            config->key_size) ;
+    dictionary_remove (instance->dict, (char*)&rec->key_and_data) ;
     m = dictionary_install_size(instance->dict, (char*)&rec->key_and_data,
-            config->key_size,
             sizeof(NVOL3_ENTRY_T) + localsize) ;
 
     if (m) {
@@ -1459,10 +1453,9 @@ static NVOL3_ENTRY_T*
 retrieve_lookup_table (NVOL3_INSTANCE_T * instance, NVOL3_RECORD_T* value)
 {
     struct dlist * m ;
-    const NVOL3_CONFIG_T  *   config = instance->config ;
+    //const NVOL3_CONFIG_T  *   config = instance->config ;
 
-    m = dictionary_get (instance->dict, (const char*)value->key_and_data,
-            config->key_size) ;
+    m = dictionary_get (instance->dict, (const char*)value->key_and_data) ;
     if (m) {
         return (NVOL3_ENTRY_T*)dictionary_get_value(instance->dict, m) ;
     }

@@ -69,21 +69,21 @@ struct dictionary_it {
 
 
 struct dictionary *     dictionary_init(heapspace heap, unsigned int keyspec, unsigned int hashsize) ;
-struct dlist*           dictionary_install_size(struct dictionary * dict, const char *key, unsigned int keysize, unsigned int valuesize) ;
-struct dlist*           dictionary_replace(struct dictionary * dict, const char *key, unsigned int keysize, const char *value, unsigned int valuesize) ;
-struct dlist*           dictionary_lookup(struct dictionary * dict, const char *key, unsigned int keysize, const char *value, unsigned int valuesize) ;
-struct dlist*           dictionary_get(struct dictionary * dict, const char *key, unsigned int keysize) ;
+struct dlist*           dictionary_install_size(struct dictionary * dict, const char *key, unsigned int valuesize) ;
+struct dlist*           dictionary_replace(struct dictionary * dict, const char *key, const char *value, unsigned int valuesize) ;
+struct dlist*           dictionary_lookup(struct dictionary * dict, const char *key, const char *value, unsigned int valuesize) ;
+struct dlist*           dictionary_get(struct dictionary * dict, const char *key) ;
 const char*             dictionary_get_key (struct dictionary * dict, struct dlist* np) ;
 unsigned int            dictionary_get_key_size (struct dictionary * dict, struct dlist* np) ;
 char*                   dictionary_get_value (struct dictionary * dict, struct dlist* np) ;
-unsigned int            dictionary_remove(struct dictionary * dict, const char *key, unsigned int keysize) ;
+unsigned int            dictionary_remove(struct dictionary * dict, const char *key) ;
 void                    dictionary_remove_all(struct dictionary * dict, void (*cb)(struct dictionary *, struct dlist*, uintptr_t), uintptr_t parm) ;
 void                    dictionary_destroy(struct dictionary * dict) ;
 unsigned int            dictionary_count (struct dictionary * dict) ;
 
 struct dlist*           dictionary_it_first (struct dictionary * dict, struct dictionary_it* it, DLIST_COMPARE_T cmp, uintptr_t parm) ;
 struct dlist*           dictionary_it_next (struct dictionary * dict, struct dictionary_it* it) ;
-struct dlist*           dictionary_it_at (struct dictionary * dict, const char *key, unsigned int len, struct dictionary_it* it) ;
+struct dlist*           dictionary_it_at (struct dictionary * dict, const char *key, struct dictionary_it* it) ;
 struct dlist*           dictionary_it_get (struct dictionary * dict, struct dictionary_it* it) ;
 
 unsigned int            dictionary_hashtab_size (struct dictionary * dict) ;
