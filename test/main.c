@@ -41,7 +41,11 @@ CORSHELL_CMD_DECL("exit", corshell_exit, "[string]");
 /*
  * Run until the exit flag is set.
  */
-static bool     _shell_exit = false ;
+static bool             _shell_exit = false ;
+/*
+ * Controll the logging level ;
+ */
+static uint32_t         _shell_log_level = CORSHELL_OUT_ERR ;
 
 int
 main(int argc, char* argv[])
@@ -73,18 +77,26 @@ main(int argc, char* argv[])
     /*
      * Print startup and help text.
      */
-    printf ("%s\r\n\r\n", SHELL_VERSION_STR) ;
+    printf ("\r\n\r\n%s\r\n\r\n", SHELL_VERSION_STR) ;
     printf ("use 'help' or '?' for help.\r\n") ;
     printf ("%s", SHELL_PROMPT) ;
+    /*
+     * Run the test scripts to fill the registry and string table.
+     */
+    corshell_script_run (0, corshell_out, "", ". test/strtab.sh",
+                             strlen(". test/strtab.sh")) ;
+    corshell_script_run (0, corshell_out, "", ". test/reg.sh",
+                             strlen(". test/reg.sh")) ;
+    /*
+     * Decrease the logging level after executing the scripts.
+     */
+    _shell_log_level = CORSHELL_OUT_STD ;
+
     /*
      * Now process the input from the command line as shell commands until
      * the "exit" command was executed.
      */
     do {
-
-        //corshell_script_run (0, corshell_out, "", ". test/strtab.sh", strlen(". test/strtab.sh")) ; ;
-        //corshell_script_run (0, corshell_out, "", ". test/reg.sh", strlen(". test/reg.sh")) ; ;
-
         char line[512];
         int len = get_line (line, 512) ;
         if (len > 0) {
@@ -94,6 +106,7 @@ main(int argc, char* argv[])
         }
 
     } while (!_shell_exit) ;
+
     /*
      * Stop everything before we exit.
      */
@@ -108,7 +121,7 @@ main(int argc, char* argv[])
 static int32_t
 corshell_out (void* ctx, uint32_t out, const char* str)
 {
-    if (str && (out >= CORSHELL_OUT_STD)) {
+    if (str && (out >= _shell_log_level)) {
         printf ("%s", str) ;
 
     }
