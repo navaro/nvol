@@ -218,6 +218,7 @@ Again, we can now list the string table with a simple command:
 0999   test
 
     23 entries found.
+# >
 ```
 
 Like the registry, the string table example registers itself with the string substitution library to replace index values delimited with < > with the string in the string table. For example:
@@ -225,6 +226,7 @@ Like the registry, the string table example registers itself with the string sub
 ```
 # >echo "<1>"
 The end of the world is our playground.
+# >
 ```
 
 

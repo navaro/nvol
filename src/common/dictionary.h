@@ -41,6 +41,7 @@ struct dlist { /* table entry: */
 
 struct dictionary_it {
     struct dlist *          np; /* this entry */
+    struct dlist *          prev; /* previous entry */
     int                     idx ;
     DLIST_COMPARE_T         cmp ;
     uintptr_t               parm ;
@@ -67,6 +68,9 @@ struct dictionary_it {
 #define DICTIONARY_KEYSPEC_BINARY_4             DICTIONARY_MKKEY(DICTIONARY_KEYTYPE_BINARY, 4)
 #define DICTIONARY_KEYSPEC_BINARY(n)            DICTIONARY_MKKEY(DICTIONARY_KEYTYPE_BINARY, n)
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct dictionary *     dictionary_init(heapspace heap, unsigned int keyspec, unsigned int hashsize) ;
 struct dlist*           dictionary_install_size(struct dictionary * dict, const char *key, unsigned int valuesize) ;
@@ -85,9 +89,15 @@ struct dlist*           dictionary_it_first (struct dictionary * dict, struct di
 struct dlist*           dictionary_it_next (struct dictionary * dict, struct dictionary_it* it) ;
 struct dlist*           dictionary_it_at (struct dictionary * dict, const char *key, struct dictionary_it* it) ;
 struct dlist*           dictionary_it_get (struct dictionary * dict, struct dictionary_it* it) ;
+    void                    dictionary_it_remove (struct dictionary * dict, struct dictionary_it* it) ;
+    struct dlist*           dictionary_it_move (struct dictionary * dict, struct dictionary_it* it, struct dictionary * dest) ;
 
 unsigned int            dictionary_hashtab_size (struct dictionary * dict) ;
 unsigned int            dictionary_hashtab_cnt (struct dictionary * dict, unsigned int idx) ;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __DICTIONARY_H__ */
 

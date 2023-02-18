@@ -23,8 +23,8 @@
 
 
 
-#ifndef SERVICES_REGISTRY_STRTAB_H_
-#define SERVICES_REGISTRY_STRTAB_H_
+#ifndef __STRTAB_H__
+#define __STRTAB_H__
 
 #include <stdint.h>
 
@@ -69,4 +69,4 @@ void        strtab_log_status (void) ;
 }
 #endif
 
-#endif /* SERVICES_REGISTRY_STRTAB_H_ */
+#endif /* __STRTAB_H__ */
