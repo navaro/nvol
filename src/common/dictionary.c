@@ -659,7 +659,7 @@ dictionary_it_move (struct dictionary * dict, struct dictionary_it* it,
     if (!np || (dict->keyspec != dest->keyspec)) return res ;
 
     const char * key = dict->key->key (dict, np) ;
-    unsigned int keysize = DICTIONARY_KEY_SIZE(dict->keyspec) ;
+    //unsigned int keysize = DICTIONARY_KEY_SIZE(dict->keyspec) ;
 
     if (dict_lookup(dest, key)) return res ;
 
