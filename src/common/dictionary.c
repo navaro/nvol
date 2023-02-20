@@ -37,7 +37,7 @@ typedef char*           (*DICTIONARY_VALUE_T)(struct dictionary * /* dict */, st
 
 
 struct dictionary_keyval {
-    DICTIONARY_KEYVAL_ALLOC_T       set ;
+    DICTIONARY_KEYVAL_ALLOC_T       alloc ;
     DICTIONARY_KEYVAL_FREE_T        free ;
     DICTIONARY_KEY_HASH_T           hash ;
     DICTIONARY_KEY_CMP_T            cmp ;
@@ -61,7 +61,6 @@ dictionary_str_keyval_alloc(struct dictionary * dict, const char *s,
 {
     char *p;
     struct dlist * np ;
-
     if (s == 0) return 0 ;
     np = (struct dlist *) DICTIONARY_MALLOC(dict->heap,
             		sizeof(struct dlist) + sizeof(uintptr_t) + valuesize);
@@ -72,7 +71,7 @@ dictionary_str_keyval_alloc(struct dictionary * dict, const char *s,
         return 0;
     }
    strcpy(p, s);
-    np->keyval[0] = (uintptr_t)p ;
+   np->keyval[0] = (uintptr_t)p ;
    return np ;
 }
 
@@ -87,8 +86,7 @@ static struct dlist *
 dictionary_const_str_keyval_alloc(struct dictionary * dict, const char *s,
                     unsigned int valuesize)
 {
-   struct dlist * np ;
-
+    struct dlist * np ;
     if (s == 0) return 0 ;
     np = (struct dlist *) DICTIONARY_MALLOC(dict->heap,
             		sizeof(struct dlist) + sizeof(uintptr_t) + valuesize);
@@ -103,7 +101,6 @@ dictionary_const_str_keyval_free(struct dictionary * dict, struct dlist *np)
     DICTIONARY_FREE(dict->heap, np);
 }
 
-/* hash: form hash value for string */
 static unsigned int
 dictionary_str_key_hash(struct dictionary * dict, const char *s)
 {
@@ -124,7 +121,6 @@ dictionary_str_key_cmp(struct dictionary * dict, struct dlist *np,
     if (strcmp(s, p) == 0) {
         return 1 ;
     }
-
     return 0 ;
 }
 
@@ -141,45 +137,53 @@ dictionary_str_value(struct dictionary * dict, struct dlist *np)
     return (char*)&np->keyval[1] ;
 }
 
-
-/* hash: form hash value for uint16 */
 static struct dlist *
-dictionary_uint_keyval_alloc(struct dictionary * dict, const char *s,
+dictionary_ushort_keyval_alloc(struct dictionary * dict, const char *s,
                     unsigned int valuesize)
 {
     struct dlist * np ;
-
     np = (struct dlist *) DICTIONARY_MALLOC(dict->heap,
-            		sizeof(struct dlist) + sizeof(uint32_t) + valuesize);
+                    sizeof(struct dlist) + sizeof(uint32_t) + valuesize);
     if (!np) return 0 ;
-    np->keyval[0] =  *((uint32_t*)s)  ;
+    ((uint32_t*)np->keyval)[0] =  *((uint16_t*)s)  ; /* for alignment of value */
     return np ;
 }
 
 static void
-dictionary_uint_keyval_free(struct dictionary * dict, struct dlist *np)
+dictionary_ushort_keyval_free(struct dictionary * dict, struct dlist *np)
 {
     DICTIONARY_FREE (dict->heap, np) ;
     return ;
 }
 
-/* hash: form hash value for uint16 */
 static unsigned
-dictionary_uint_key_hash(struct dictionary * dict, const char *s)
+dictionary_ushort_key_hash(struct dictionary * dict, const char *s)
 {
-    return *((unsigned int*)s) % dict->hashsize ;
+    return *((uint16_t*)s) % dict->hashsize ;
 }
 
 
 static unsigned int
-dictionary_uint_key_cmp(struct dictionary * dict, struct dlist *np,
+dictionary_ushort_key_cmp(struct dictionary * dict, struct dlist *np,
                     const char *s)
 {
-    if ((unsigned int)np->keyval[0] == *((unsigned int*)s)) {
+    if (((uint16_t*)np->keyval)[0] == *((uint16_t*)s)) {
         return 1 ;
     }
-
     return 0 ;
+}
+
+const char*
+dictionary_ushort_key(struct dictionary * dict, struct dlist *np)
+{
+    return (const char*)&np->keyval[0] ;
+}
+
+char*
+dictionary_ushort_value(struct dictionary * dict, struct dlist *np)
+{
+    uint32_t  * pkeyval = (uint32_t*)np->keyval ;
+    return (char*)&pkeyval[1] ;
 }
 
 static struct dlist *
@@ -188,7 +192,6 @@ dictionary_binary_keyval_alloc(struct dictionary * dict, const char *s,
 {
     struct dlist * np ;
     uint16_t keylen = dict->keyspec & 0xFFFF ;
-
     np = (struct dlist *) DICTIONARY_MALLOC(dict->heap,
             	sizeof(struct dlist) + keylen * sizeof(uint32_t) + valuesize);
     if (!np) return 0 ;
@@ -203,7 +206,6 @@ dictionary_binary_keyval_free(struct dictionary * dict, struct dlist *np)
     return ;
 }
 
-/* hash: form hash value for uint16 */
 static unsigned
 dictionary_binary_key_hash(struct dictionary * dict, const char *s)
 {
@@ -211,7 +213,6 @@ dictionary_binary_key_hash(struct dictionary * dict, const char *s)
     uint16_t len = dict->keyspec & 0xFFFF ;
     unsigned int i ;
     uint32_t hash = 0 ;
-
     for (i=0; i<len; i++) {
         hash += pkey[i] ;
     }
@@ -228,14 +229,12 @@ dictionary_binary_key_cmp(struct dictionary * dict, struct dlist *np,
     uint16_t len = dict->keyspec & 0xFFFF ;
     unsigned int i ;
     uint32_t cmp = 1 ;
-
     for (i=0; i<len; i++) {
         if (pkey[i] != pkeyval[i]) {
             cmp = 0 ;
             break ;
         }
     }
-
     return cmp ;
 }
 
@@ -248,7 +247,7 @@ dictionary_key(struct dictionary * dict, struct dlist *np)
 char*
 dictionary_value(struct dictionary * dict, struct dlist *np)
 {
-    unsigned int  * pkeyval = (unsigned int*)np->keyval ;
+    uint32_t  * pkeyval = (uint32_t*)np->keyval ;
     return (char*)&pkeyval[dict->keyspec & 0xFFFF] ;
 }
 
@@ -273,10 +272,9 @@ dict_remove (struct dictionary * dict, const char *s) {
         }
     }
     return np;
-
 }
 
-/* dict_lookup: look for s in hashtab */
+/* look forkeys in hashtab */
 static struct dlist *
 dict_lookup (struct dictionary * dict, const char *key)
 {
@@ -311,13 +309,13 @@ dictionary_init (heapspace heap, unsigned int keyspec, unsigned int hashsize)
             &dictionary_str_value
 
     };
-    static const struct dictionary_keyval uint_key = {
-            &dictionary_uint_keyval_alloc,
-            &dictionary_uint_keyval_free,
-            &dictionary_uint_key_hash,
-            &dictionary_uint_key_cmp,
-            &dictionary_key,
-            &dictionary_value
+    static const struct dictionary_keyval ushort_key = {
+            &dictionary_ushort_keyval_alloc,
+            &dictionary_ushort_keyval_free,
+            &dictionary_ushort_key_hash,
+            &dictionary_ushort_key_cmp,
+            &dictionary_ushort_key,
+            &dictionary_ushort_value
 
     };
 
@@ -336,7 +334,7 @@ dictionary_init (heapspace heap, unsigned int keyspec, unsigned int hashsize)
 #define DICTSIZE(hashsize) \
             (sizeof(struct dictionary) + sizeof(struct dlist *) * hashsize)
 
-     dict =   (struct dictionary *) DICTIONARY_MALLOC(heap, DICTSIZE(hashsize)) ;
+     dict = (struct dictionary *) DICTIONARY_MALLOC(heap, DICTSIZE(hashsize)) ;
      if (dict) {
         memset (dict,0,DICTSIZE(hashsize)) ;
 
@@ -345,8 +343,8 @@ dictionary_init (heapspace heap, unsigned int keyspec, unsigned int hashsize)
         if ((keyspec >> 16) == DICTIONARY_KEYTYPE_BINARY) {
             dict->key = &binary_key ;
 
-        } else if (keyspec == DICTIONARY_KEYSPEC_UINT) {
-            dict->key = &uint_key ;
+        } else if (keyspec == DICTIONARY_KEYSPEC_USHORT) {
+            dict->key = &ushort_key ;
 
        } else if (keyspec == DICTIONARY_KEYSPEC_CONST_STRING) {
             dict->key = &const_str_key ;
@@ -358,11 +356,12 @@ dictionary_init (heapspace heap, unsigned int keyspec, unsigned int hashsize)
 
         dict->hashsize = hashsize ;
         dict->heap = heap ;
+
      }
     return dict ;
 }
 
-/* install: put (name, defn) in hashtab */
+/* put key in hashtab, alloc if not found */
 struct dlist*
 dictionary_install_size(struct dictionary * dict, const char *key,
                     unsigned int valuesize)
@@ -370,7 +369,7 @@ dictionary_install_size(struct dictionary * dict, const char *key,
     struct dlist *np;
     unsigned hashval;
      if ((np = dict_lookup(dict, key)) == 0) { /* not found */
-        np = dict->key->set(dict, key, valuesize) ;
+        np = dict->key->alloc(dict, key, valuesize) ;
         if (np == 0) return 0;
         hashval = dict->key->hash(dict, key);
         np->next = dict->hashtab[hashval];
@@ -381,7 +380,6 @@ dictionary_install_size(struct dictionary * dict, const char *key,
     return np ;
 }
 
-/* install: put (name, defn) in hashtab */
 struct dlist*
 dictionary_replace(struct dictionary * dict, const char *key, const char *value,
                     unsigned int valuesize)
@@ -393,7 +391,7 @@ dictionary_replace(struct dictionary * dict, const char *key, const char *value,
     return np ;
 }
 
-/* install: put (name, defn) in hashtab */
+/* find key in hashtab, alloc and set value if not found */
 struct dlist*
 dictionary_lookup(struct dictionary * dict, const char *key, const char *value,
                     unsigned int valuesize)
@@ -401,7 +399,7 @@ dictionary_lookup(struct dictionary * dict, const char *key, const char *value,
     struct dlist *np;
     unsigned hashval;
      if ((np = dict_lookup(dict, key)) == 0) { /* not found */
-        np = dict->key->set(dict, key, valuesize) ;
+        np = dict->key->alloc(dict, key, valuesize) ;
         if (np == 0) return 0;
         hashval = dict->key->hash(dict, key);
         np->next = dict->hashtab[hashval];
@@ -524,7 +522,7 @@ dictionary_it_next (struct dictionary * dict, struct dictionary_it* it)
     if (!it->cmp) return _it_next (dict, it) ;
 
     struct dlist *nextnp  = 0 ;
-    struct dlist *np  ;
+    struct dlist *np;
     struct dictionary_it _it = {0, 0, -1, 0, 0} ;
     int idx = -1 ;
 
@@ -538,12 +536,12 @@ dictionary_it_next (struct dictionary * dict, struct dictionary_it* it)
         if (!nextnp) {
             nextnp = np ;
             idx = _it.idx ;
-        }
+    }
         else if (it->cmp(dict, it->parm, nextnp, np)>0) {
             nextnp = np ;
             idx = _it.idx ;
-        }
-    }
+         }
+     }
 
     it->np = nextnp ;
     it->idx = idx ;
@@ -659,7 +657,6 @@ dictionary_it_move (struct dictionary * dict, struct dictionary_it* it,
     if (!np || (dict->keyspec != dest->keyspec)) return res ;
 
     const char * key = dict->key->key (dict, np) ;
-    //unsigned int keysize = DICTIONARY_KEY_SIZE(dict->keyspec) ;
 
     if (dict_lookup(dest, key)) return res ;
 
