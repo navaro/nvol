@@ -104,7 +104,7 @@ dictionary_const_str_keyval_free(struct dictionary * dict, struct dlist *np)
 static unsigned int
 dictionary_str_key_hash(struct dictionary * dict, const char *s)
 {
-    unsigned hashval;
+    unsigned int hashval;
     if (s == 0) return 0 ;
     for (hashval = 0; *s != '\0'; s++) {
       hashval = *s + 31 * hashval;
@@ -191,7 +191,7 @@ dictionary_binary_keyval_alloc(struct dictionary * dict, const char *s,
                     unsigned int valuesize)
 {
     struct dlist * np ;
-    uint16_t keylen = dict->keyspec & 0xFFFF ;
+    unsigned int keylen = dict->keyspec & 0xFFFF ;
     np = (struct dlist *) DICTIONARY_MALLOC(dict->heap,
             	sizeof(struct dlist) + keylen * sizeof(uint32_t) + valuesize);
     if (!np) return 0 ;
@@ -652,6 +652,7 @@ dictionary_it_move (struct dictionary * dict, struct dictionary_it* it,
 {
     struct dlist *np = it->np ;
     struct dlist *prev = it->prev ;
+    unsigned int hashval = it->idx ;
     struct dlist* res = dictionary_it_next (dict, it) ;
 
     if (!np || (dict->keyspec != dest->keyspec)) return res ;
@@ -665,10 +666,10 @@ dictionary_it_move (struct dictionary * dict, struct dictionary_it* it,
         prev->next = np->next ;
     }
     else {
-        dict->hashtab[it->idx] = np->next ;
+        dict->hashtab[hashval] = np->next ;
     }
 
-    unsigned hashval = dest->key->hash(dest, key);
+    hashval = dest->key->hash(dest, key);
     np->next = dest->hashtab[hashval];
     dest->hashtab[hashval] = np;
     dest->count++ ;
