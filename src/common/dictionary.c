@@ -662,6 +662,7 @@ dictionary_it_move (struct dictionary * dict, struct dictionary_it* it,
     if (dict_lookup(dest, key)) return res ;
 
     dict->count-- ;
+    it->prev = prev ;
     if (prev) {
         prev->next = np->next ;
     }
